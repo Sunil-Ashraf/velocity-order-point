@@ -1,0 +1,630 @@
+﻿@page "/Home/{wholesaler}"
+
+@layout OrderPoint.Components.Layout.HomeLayout
+   @using System.Text.Json
+@using OrderPoint.Components.Common
+@using OrderPoint.Domain.ViewModel
+@using OrderPoint.Services
+@using OrderPoint.Helper;
+@rendermode InteractiveServer
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject NavigationManager navigator
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject HttpClient httpClient
+@inject IHttpContextAccessor HttpContextAccessor
+@inject LogoutService LogoutService
+<title>Order Point</title>
+<LandingPageLoader visible=loader />
+<style>
+    @@font-face {
+    font-family: 'Zodiak';
+    src: url('/Fonts/OTF/Zodiak-Regular.otf') format('opentype');
+    font-weight: 400;
+    font-style: normal;
+    }
+
+    @@font-face {
+    font-family: 'Zodiak';
+    src: url('/Fonts/OTF/Zodiak-Light.otf') format('opentype');
+    font-weight: 300;
+    font-style: normal;
+    }
+
+    @@font-face {
+    font-family: 'Zodiak';
+    src: url('/Fonts/OTF/Zodiak-Bold.otf') format('opentype');
+    font-weight: 700;
+    font-style: normal;
+    }
+
+    @@font-face {
+    font-family: 'Zodiak';
+    src: url('/Fonts/OTF/Zodiak-Italic.otf') format('opentype');
+    font-weight: 400;
+    font-style: italic;
+    }
+
+    /* Optional: Add more like Thin, Black, etc. */
+
+
+
+    .text-link {
+    font-size: 16px;
+    }
+
+    @@media (max-width: 1400px) {
+    .text-link {
+    font-size: 14px !important;
+    }
+
+    .social-div img {
+    width: 22px;
+    height: 22px;
+    }
+    }
+
+    @@media (max-width: 1300px) {
+    .text-link {
+    font-size: 11px !important;
+    }
+
+    .social-div img {
+    width: 22px;
+    height: 22px;
+    }
+    }
+
+    @@media (max-width: 1050px) {
+    .text-link {
+    font-size: 9px !important;
+    }
+
+    .logoOrder {
+    position: relative;
+    left: -27px;
+    width: 80px;
+    object-fit: contain;
+    }
+
+    .top72 {
+    top: -60px !important;
+    }
+
+    .social-div {
+    padding: 6px 20px !important;
+    }
+
+    .content-body {
+    bottom: 105px !important;
+    left: 80px;
+    }
+
+    .social-div img {
+    width: 22px;
+    height: 22px;
+    }
+    }
+
+    @@media (min-width: 1700px) {
+    .text-link {
+    font-size: 17px !important;
+    }
+    }
+
+    @@media (min-width: 1900px) {
+    .text-link {
+    font-size: 19px !important;
+    }
+    }
+
+    @@media (max-width: 800px) {
+    .top72 {
+    top: 0 !important;
+    }
+
+    .display-none {
+    display: none;
+    }
+
+    .content-body {
+    bottom: 45px !important;
+    left: 45px;
+    }
+
+    .content-body h1 {
+    font-size: 40px;
+    }
+
+    .content-body p {
+    font-size: 14px;
+    }
+
+    .margin-minus {
+    margin-top: 30px;
+    }
+
+    .links-div .text-link {
+    font-size: 13px !important;
+    }
+
+    .logoOrder {
+    height: 50px;
+    object-fit: contain;
+    position: relative;
+    top: -10px;
+    left: -18px;
+    }
+    }
+
+    @@media (min-width: 781px) {
+    .top72 {
+    top: -72px !important;
+    }
+
+    .display-none1 {
+    display: none;
+    }
+
+    .content-body {
+    bottom: 190px;
+    left: 80px;
+    }
+
+    .margin-minus {
+    margin-top: -30px;
+    }
+    }
+
+    @@media (min-width: 501px) {
+    .mobile-paragraph {
+    display: none !important;
+    }
+    }
+
+    @@media (max-width: 500px) {
+    .display-none1 img {
+    height: 290px;
+    }
+
+    div.content-body {
+    bottom: 35px !important;
+    left: 30px;
+    width: 265px;
+    }
+
+    .content-body h1 {
+    font-size: 22px;
+    margin-bottom: 6px !important;
+    }
+
+    .content-body .order-btn {
+    font-size: 16px;
+    }
+
+    .logoOrder {
+    width: 80px !important;
+    height: 54px !important;
+    object-fit: contain !important;
+    }
+
+    .large-paragraph {
+    display: none !important;
+    }
+    }
+</style>
+<div class="flex flex-col min-h-screen bg-[#FFFBEF] text-white" style="font-family: 'Outfit', sans-serif; ">
+    <!-- Header -->
+    <header class="flex items-center justify-between px-6 py-4 lg:px-12 font-outfit">
+        <!-- Logo -->
+        <div class="flex items-center space-x-2">
+            <div class="flex items-center justify-center relative top-[10px]">
+
+                @if (wholesalerModel != null && !string.IsNullOrEmpty(wholesalerModel.ImagePath))
+                {
+                    <a href="/login" style="z-index:9">
+                        <img class="w-[100px]   logoOrder" style="    height: 65px;
+    object-fit: contain;" src="@($"{_configuration["API_App_URL"]}/WholesalePictures/{wholesalerModel.ImagePath}")"
+                        onerror="this.onerror=null;this.src='/images/Order Point.png';"
+                        alt="Alternate Text" />
+                    </a>
+                }
+                else
+                {
+                    <a href="/login" style="z-index:9">
+                        <img src="/images/Order Point.png" class="w-[100px] h-[67px] logoOrder" alt="Alternate Text" />
+                    </a>
+                }
+
+
+
+
+            </div>
+        </div>
+
+        <!-- Desktop Links -->
+        <div class="hidden md:flex items-center gap-4 position-relative links-div z-[9]">
+            @if (wholesalerModel != null && !String.IsNullOrEmpty(@wholesalerModel.LandingPageTelephone))
+            {
+                <div class="flex items-center space-x-2 bg-[#F5F0E0] rounded-full px-4 py-2 social-div">
+                    <span>
+                        <img src="/images/phoneIcon.png" class="img-fluid" alt="Phone" />
+                    </span>
+                    <a href="tel:@wholesalerModel.LandingPageTelephone"
+                    class="font-outfit font-normal text-link leading-6 tracking-normal text-[#262626] hover:text-[#262626] text-decoration-none">
+                        @wholesalerModel.LandingPageTelephone
+                    </a>
+                </div>
+            }
+
+            @if (wholesalerModel != null && !String.IsNullOrEmpty(@wholesalerModel.LandingPageEmail))
+            {
+                <div class="flex items-center space-x-2 bg-[#F5F0E0] rounded-full px-4 py-2 social-div">
+                    <span>
+                        <img src="/images/emailicon.png" class="img-fluid" alt="Email" />
+                    </span>
+                    <a href="mailto:@wholesalerModel.LandingPageEmail"
+                    class="font-outfit font-normal text-link leading-6 tracking-normal text-[#262626] hover:text-[#262626] text-decoration-none">
+                        @wholesalerModel.LandingPageEmail
+                    </a>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(UserEmail))
+            {
+                <a href="javascript:;" @onclick="Logout"   class="flex items-center space-x-2 bg-[#F5F0E0] rounded-full px-4 py-2 social-div text-decoration-none">
+                    <span class="font-outfit font-normal text-link leading-6 tracking-normal text-[#262626]">@UserEmail</span>
+                    <span>
+                        <img src="/images/signOutIcon.png" class="img-fluid" alt="SignOut" />
+                    </span>
+                </a>
+            }
+        </div>
+
+        <!-- Mobile Dropdown -->
+        <div class="md:hidden relative" @ref="menuContainer">
+            <button class="p-2 rounded-md" @onclick="ToggleMenu">
+                <span>
+                    <i class="fa-regular fa-circle-user text-[#485f33] fs-1"></i>
+                </span>
+            </button>
+
+            @if (isMenuOpen)
+            {
+                <div class="absolute right-0 mt-2  bg-white rounded-lg shadow-lg p-1 z-50" style="overflow:auto;width: 240px;">
+                    @if (!String.IsNullOrEmpty(@wholesalerModel.LandingPageTelephone))
+                    {
+                        <a href="tel:@wholesalerModel.LandingPageTelephone"
+                        class="flex items-center gap-2 px-3 py-2  border-bottom hover:text-[#262626] text-[#262626] text-decoration-none">
+                            <img src="/images/phoneIcon.png" class="w-5 h-5" alt="Phone" />
+                            @wholesalerModel.LandingPageTelephone
+                        </a>
+                    }
+
+                    @if (!String.IsNullOrEmpty(@wholesalerModel.LandingPageEmail))
+                    {
+                        <a href="mailto:@wholesalerModel.LandingPageEmail"
+                        class="flex items-center gap-2 px-3 py-2 border-bottom  hover:text-[#262626] text-[#262626] text-decoration-none">
+                            <img src="/images/emailicon.png" class="w-5 h-5" alt="Email" />
+                            @wholesalerModel.LandingPageEmail
+                        </a>
+                    }
+
+                    @if (!string.IsNullOrEmpty(UserEmail))
+                    {
+                        <a href="javascript:;" @onclick="Logout" class="flex items-center px-3 py-2 text-[#262626]">
+                            <img src="/images/signOutIcon.png" class="w-5 h-5 me-2" alt="SignOut" />
+                            <span>@UserEmail</span>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+
+    </header>
+    <!-- Hero Section -->
+    <main class="lg:px-12 position-relative px-3">
+        @*this div render when user is not login*@
+        @if (!string.IsNullOrEmpty(UserEmail))
+        {
+            if (wholesalerModel != null && !string.IsNullOrEmpty(wholesalerModel.BannerImagePath))
+            {
+                <div class="img-banner position-relative ">
+
+                    <img class="img-fluid w-100 rounded-4" style="max-height: 600px;object-fit: cover;" src="@($"{_configuration["API_App_URL"]}/WholesalePictures/{wholesalerModel.BannerImagePath}")"
+                    onerror="this.onerror=null;this.src='/images/home-banner-img.png';"
+                    alt="Alternate Text" />
+
+                </div>
+            }
+            else
+            {
+                <div class="img-banner position-relative top72 display-none">
+                    <img src="/images/Subtract.png" class="img-fluid w-100" alt="Alternate Text" />
+                </div>
+            }
+        }
+        else
+        {
+            if (wholesalerModel != null && !string.IsNullOrEmpty(wholesalerModel.BannerImagePath))
+            {
+                <div class="img-banner position-relative  ">
+
+                    <img class="img-fluid w-100 rounded-4" style="max-height: 600px;object-fit: cover;" src="@($"{_configuration["API_App_URL"]}/WholesalePictures/{wholesalerModel.BannerImagePath}")"
+                    onerror="this.onerror=null;this.src='/images/home-banner-img.png';"
+                    alt="Alternate Text" />
+
+                </div>
+            }
+            else
+            {
+                <div class="img-banner position-relative top72 display-none">
+
+                    <img src="/images/home-img.png" class="img-fluid w-100" alt="Alternate Text" />
+                </div>
+            }
+        }
+
+        @* this div render when user is login *@
+        @*<div class="img-banner position-relative top72 display-none">
+                <img src="/images/Subtract.png" class="img-fluid w-100" alt="Alternate Text" />
+            </div>
+        <div class="img-banner position-relative display-none1">
+            <img src="/images/home-banner-img.png" class="img-fluid w-100 rounded-3" alt="Alternate Text" />
+        </div>*@
+        <div class="max-w-4xl position-absolute content-body">
+            <h1 class="font-medium text-[60px] font-zodiak leading-[100%] tracking-normal text-[#FFFBEF] capitalize mb-4" style="font-family: 'Zodiak';">
+
+                @(wholesalerModel != null && string.IsNullOrEmpty(wholesalerModel.WelcomeMessage)
+                                    ? "Welcome to Our Store!"
+                                    : wholesalerModel.WelcomeMessage)
+            </h1>
+
+            @if (wholesalerModel != null && string.IsNullOrEmpty(wholesalerModel.Description))
+            {
+
+
+                <p class="font-[Outfit] font-light text-white text-[18px] leading-[26px] pb-3 mobile-paragraph">
+
+                    Here, You Can Easily And Quickly Place An Order For Our Products. Simply Choose The Items From Our
+                    Catalog, Add Them To Your Cart, And Fill Out The Order Form. We'll Take Care Of The Rest!
+                </p>
+                <p class="font-[Outfit] font-light text-white text-[18px] leading-[26px] pb-3 large-paragraph">
+                    Here, You Can Easily And Quickly Place An Order For Our Products. Simply <br /> Choose The Items From Our
+                    Catalog, Add Them To Your Cart, And Fill Out The <br /> Order Form. We'll Take Care Of The Rest!
+                </p>
+            }
+            else{
+
+                @((MarkupString)wholesalerModel.Description)
+
+            }
+
+
+            <a href="/login" class="font-[Outfit] font-medium text-[18px] mt-3 leading-[26px] tracking-[0%] order-btn text-center text-decoration-none bg-[#FFFBEF] text-[#262626] hover:text-[#262626] rounded-full px-6 py-2">
+                Order Now
+            </a>
+        </div>
+    </main>
+
+    <!-- Process Steps -->
+    <section class="px-3 lg:px-12 mb-5 mt-5  " style="">
+        <div class="">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+
+                
+                    <a href="javascript:;" @onclick="ChooseProduct" style="text-decoration:none">
+                <div class="align-items-center bg-[#F5F0E0] d-flex p-4 rounded-[12px]">
+
+                    <div class="me-4"><img src="/images/greenProduct.png" class="img-fluid" alt="box"></div>
+                    <div>
+                        <label class="text-[#262626] font-[Outfit] font-medium text-[18px] leading-[26px] text-center">
+                            Choose Products
+                        </label>
+                        <div>
+                            <span class="text-[#515151] font-[Outfit] font-light text-[16px] leading-[22px]">
+                                Browse our catalog and
+                                select your desired items
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                    </a>
+
+             <a href="javascript:;" @onclick="ChooseProduct" style="text-decoration:none">
+
+                <div class="align-items-center bg-[#F5F0E0] d-flex p-4 rounded-[12px]">
+                    <div class="me-4"><img src="/images/greenCart.png" class="img-fluid" alt="box"></div>
+                    <div>
+                        <label class="text-[#262626] font-[Outfit] font-medium text-[18px] leading-[26px] text-center">
+                            Add to Cart
+                        </label>
+                        <div>
+                            <span class="text-[#515151] font-[Outfit] font-light text-[16px] leading-[22px]">
+                                Click "Add to Cart" for each item you wish to purchase
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                </a>
+                <div class="align-items-center bg-[#F5F0E0] d-flex p-4 rounded-[12px]">
+                    <div class="me-4"><img src="/images/greenCheckout.png" class="img-fluid" alt="box"></div>
+                    <div>
+                        <label class="text-[#262626] font-[Outfit] font-medium text-[18px] leading-[26px] text-center">
+                            Checkout
+                        </label>
+                        <div>
+                            <span class="text-[#515151] font-[Outfit] font-light text-[16px] leading-[22px]">
+                                Finalize order with contact details and delivery address.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                 <a href="javascript:;" @onclick="DeliveryOption" style="text-decoration:none">
+                <div class="align-items-center bg-[#F5F0E0] d-flex p-4 rounded-[12px]">
+                    <div class="me-4"><img src="/images/greenDelievery.png" class="img-fluid" alt="box"></div>
+                    <div>
+                        <label class="text-[#262626] font-[Outfit] font-medium text-[18px] leading-[26px] text-center">
+                            Delivery
+                        </label>
+                        <div>
+                            <span class="text-[#515151] font-[Outfit] font-light text-[16px] leading-[22px]">
+                                Choose your delivery method and date and time.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                </a>
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+    [Parameter]
+    public string? wholesaler { get; set; }
+    [Parameter]
+    public bool loader { get; set; } = true;
+    private string UserEmail;
+    private bool IsLoading = true;
+    private bool _hasRendered = false;
+    private bool isMenuOpen = false;
+    private ElementReference menuContainer;
+    private DotNetObjectReference<object>? objRef;
+    [Inject] private IJSRuntime JS { get; set; }
+
+    AddEditWholesalerModel wholesalerModel = new();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {   
+
+        if (firstRender && !_hasRendered)
+        {
+            _hasRendered = true;
+
+            var context = HttpContextAccessor.HttpContext;
+            wholesalerModel = context?.Session.GetObject<AddEditWholesalerModel>("Wholesaler");
+
+            // var wholesalerLogo = context.Session.GetString("WholesalerLogo");
+             var wholesalerID = context.Session.GetString("WholesalerID");
+            // var WholesalerLandingPageTelephone = context.Session.GetString("WholesalerLandingPageTelephone");
+            // Safe to call JS interop/localStorage here
+            await LogoutService.InitializeAsync();
+            await AuthProvider.InitializeAsync();
+
+            var isTokenValid = await AuthProvider.IsTokenValidAsync();
+            if (isTokenValid)
+            {
+                loader = false;
+                UserEmail = await AuthProvider.GetClaimValue(ClaimTypesEx.Name);
+           
+                //string wholesalerName = await AuthProvider.GetClaimValue("WholesalerName");
+
+                if (wholesalerModel.Name != wholesaler)
+                {
+                    UserEmail = String.Empty;
+                    
+                    await Logout();
+                }
+            }
+            else
+            {
+                UserEmail = String.Empty;
+              
+                loader = false;
+            }
+             
+            StateHasChanged();
+        }
+    }
+    public async Task GetWholesalerByID(String wholesalername)
+    {
+
+        try
+        {
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Wholesaler/GetWholesalerByName?name={wholesalername}";
+            var response = await httpClient.GetAsync(apiUrl);
+          
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<Response<AddEditWholesalerModel>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                wholesalerModel = result?.Data ?? new AddEditWholesalerModel();
+                if (string.IsNullOrEmpty(wholesalerModel.Name))
+                {
+                    navigator.NavigateTo("/PageNotFound");
+                }
+                await _localStorage.SetItemAsync("WholesalerLogo", wholesalerModel.ImagePath);
+                StateHasChanged();
+            }
+            else
+            {
+
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                //toastService.ShowError(errorDetails);
+            }
+            loader = false;
+        }
+        catch (Exception ex)
+        {
+            loader = false;
+            Console.WriteLine($"Error fetching supplier data: {ex.Message}");
+        }
+    }
+
+    private async Task Logout()
+    {
+        await _localStorage.RemoveItemAsync("authToken");
+        AuthProvider.NotifyUserLogout();
+        StateHasChanged();
+    }
+    private void ToggleMenu()
+    {
+        isMenuOpen = !isMenuOpen;
+
+        if (isMenuOpen)
+        {
+            objRef = DotNetObjectReference.Create<object>(this);
+            JS.InvokeVoidAsync("registerOutsideClick", menuContainer, objRef);
+        }
+        else
+        {
+            JS.InvokeVoidAsync("unregisterOutsideClick");
+        }
+    }
+
+    private async void ChooseProduct()
+    {
+        await AuthProvider.InitializeAsync();
+        var isTokenValid = await AuthProvider.IsTokenValidAsync();
+
+        if (isTokenValid)
+        {
+            navigator.NavigateTo("/product-listing");
+         
+        }
+    } 
+    private async void DeliveryOption()
+    {
+        await AuthProvider.InitializeAsync();
+        var isTokenValid = await AuthProvider.IsTokenValidAsync();
+       if (isTokenValid)
+        {
+           string  Userrole = await AuthProvider.GetClaimValue(ClaimTypesEx.Role);
+            if (Userrole.Contains(Roles.Wholesaler))
+            {
+                navigator.NavigateTo("/Wholesaler/deliveryOptions");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public void CloseMenu()
+    {
+        isMenuOpen = false;
+        StateHasChanged();
+    }
+
+
+}

@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\OrderPoint.Application\OrderPoint.Application.csproj" />
+		<ProjectReference Include="..\OrderPoint.Domain\OrderPoint.Domain.csproj" />
+		<PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.7" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="Shared\" />
+	</ItemGroup>
+
+</Project>

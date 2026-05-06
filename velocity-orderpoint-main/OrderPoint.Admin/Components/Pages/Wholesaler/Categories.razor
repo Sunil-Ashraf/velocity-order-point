@@ -1,0 +1,298 @@
+﻿  @page "/view-wholesaler/Category-wh-list/{WholesalerID:long}"
+@rendermode InteractiveServer
+@using OrderPoint.Admin.Components.Common
+@using OrderPoint.Domain.ViewModel
+@using System.Net.Http.Headers
+@using System.Text.Json
+@inject NavigationManager navigator
+@inject HttpClient httpClient
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject IJSRuntime JSRuntime
+
+ 
+
+@* <Loader visible=loader /> *@
+
+<AppToast />
+<Auth setAuth="@setAuth" />
+
+@if (isAuthenticated)
+{
+    <div class="min-h-screen mt-3">
+
+        <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+            <div class="text-2xl font-semibold text-black">
+                Category List
+            </div>
+            <div class="flex flex-wrap gap-2 w-full md:w-auto items-center">
+                <div class="position-relative">
+                    <input type="search" placeholder="Search" class="w-full px-6 py-2 rounded-full  focus:outline-none" @bind="search" @oninput="OnSearchChanged" />
+                    @if (string.IsNullOrWhiteSpace(search))
+                    {
+                        <span class="position-absolute top-[8px] right-[13px] text-[#ffffff]">
+                            <i class="fa fa-search"></i>
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="overflow-x-auto rounded-[0.9rem] border ">
+            <table class="table-auto  w-full    text-left text-sm ">
+                <thead class="text-sm font-medium    text-black bg-[#F7F7F7] ">
+                    <tr>
+
+                        <th class="px-4 py-2" @onclick="() => SortTable(nameof(ProductsViewModel.Id))">
+                            <button class="flex items-center space-x-1">
+                                <span class="text-nowrap flex items-center">ID</span>
+                                <i class="bi bi-arrow-up @(productsSortColumn == nameof(ProductsViewModel.Id) && isAscending ? "text-black font-bold" : "text-gray-400")" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                <i class="bi bi-arrow-down @(productsSortColumn == nameof(ProductsViewModel.Id) && !isAscending ? "text-black font-bold" : "text-gray-400")" style=" font-size: 11px !important; width: 3px !important;"></i>
+                            </button>
+                        </th>
+
+                        <th class="px-4 py-2" @onclick="() => SortTable(nameof(ProductsViewModel.CategoryName))">
+                            <button class="flex items-center space-x-1">
+                                <span> Name </span>
+                                <i class="bi bi-arrow-up @(productsSortColumn == nameof(ProductsViewModel.CategoryName) && isAscending ? "text-black font-bold" : "text-gray-400")" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                <i class="bi bi-arrow-down @(productsSortColumn == nameof(ProductsViewModel.CategoryName) && !isAscending ? "text-black font-bold" : "text-gray-400")" style=" font-size: 11px !important; width: 3px !important;"></i>
+                            </button>
+                        </th>
+                         
+                    </tr>
+                </thead>
+                <tbody class="bg-white  p-4 mb-6 text-sm font-normal text-black">
+                    @if (lstProducts.Count == 0)
+                    {
+                        <tr><td colspan="6" class="text-center">@loading</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var item in lstProducts)
+                        {
+                            <tr>
+
+                                <td class="px-4 py-2">@item.Id</td>
+                                <td class="px-4 py-2">@item.CategoryName</td>
+                               
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex justify-center items-center  mt-4">
+            <!-- Previous Button -->
+            <button @onclick="PreviousPage" disabled="@(productsPageNumber == 1)"
+                    class="px-2 py-[0.7rem] border rounded-md bg-white text-myblueGray hover:bg-gray-200 disabled:opacity-50">
+                <img src="./images/back.png" alt="Previous" />
+            </button>
+
+            <!-- Page Numbers -->
+            @for (int i = 1; i <= productsTotalPages; i++)
+            {
+                int currentPage = i; // Create a local copy of i
+
+                if (currentPage == 1 || currentPage == 2 || currentPage == productsTotalPages - 1 || currentPage == productsTotalPages)
+                {
+                    <!-- Always show first two and last two pages -->
+                    <button @onclick="() => ChangePage(currentPage)"
+                            class="px-3 py-1 border rounded-md bg-white hover:bg-gray-200 @(productsPageNumber == currentPage ? "bg-gray-100 font-bold" : "")">
+                        @currentPage
+                    </button>
+                }
+                else if (currentPage >= productsPageNumber - 1 && currentPage <= productsPageNumber + 1)
+                {
+                    <button @onclick="() => ChangePage(currentPage)"
+                            class="px-3 py-1 border rounded-md bg-white hover:bg-gray-200 @(productsPageNumber == currentPage ? "bg-gray-100 font-bold" : "")">
+                        @currentPage
+                    </button>
+                }
+                else if ((currentPage == 3 && productsPageNumber > 4) || (currentPage == productsTotalPages - 2 && productsPageNumber < productsTotalPages - 3))
+                {
+                    <span class="px-3 py-1 bg-white">...</span>
+                }
+            }
+
+            <!-- Next Button -->
+            <button @onclick="NextPage" disabled="@(productsPageNumber == productsTotalPages)"
+                    class="px-2 py-[0.7rem] border rounded-md bg-white hover:bg-gray-200 disabled:opacity-50">
+                <img src="./images/next.png" alt="Next" />
+            </button>
+        </div>
+    </div>
+}
+@code {
+    [Parameter]
+    public bool loader { get; set; } = false; 
+    [Parameter]
+    public long WholesalerID { get; set; }  
+
+    private bool isAuthenticated;
+    private string loading { get; set; } = "Loading...";
+    private void setAuth(bool val)
+    {
+        if (val)
+        {
+            isAuthenticated = val;
+            StateHasChanged();
+        }
+        else
+        {
+            navigator.NavigateTo("/", true);
+        }
+    }
+    ///////////////// <summary>
+    /// //////////
+    /// </summary>
+    // private IEnumerable<ProductsViewModel> lstProducts { get; set; } = new List<ProductsViewModel>();
+    private System.Timers.Timer _debounceTimer;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            string token = await _localStorage.GetItemAsync<string>("authToken");
+            if (!string.IsNullOrEmpty(token))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                await GetAllProduct();
+            }
+            else
+            {
+                navigator.NavigateTo("/");
+            }
+
+        }
+    }
+    public class PagerResponse<T>
+    {
+        public int totalRecords { get; set; }
+        public int pageNumber { get; set; }
+        public int pageSize { get; set; }
+        public List<T> data { get; set; }
+    }
+
+    private List<ProductsViewModel> lstProducts = new();
+    // Product Pagination
+    private int pageSize = 10;
+    private int productsPageNumber = 1;
+    private int productsTotalPages = 1;
+    private string productsSortColumn = "CategoryName";
+    private string sortOrder = "desc";
+    private string search = string.Empty;
+
+    private async Task GetAllProduct()
+    {
+        // tableLabel = "Loading...";
+        try
+        {
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Product/GetAllCategoryBywholesaler?pageNumber={productsPageNumber}&pageSize={pageSize}&sortColumn={productsSortColumn}&sortOrder={sortOrder}&search={search}&wholesalerID={WholesalerID}";
+            // Make the API call
+            var response = await httpClient.GetAsync(apiUrl);
+
+            if (response == null)
+            {
+                Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                return;
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<PagerResponse<ProductsViewModel>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                lstProducts = result?.data ?? new List<ProductsViewModel>();
+                productsTotalPages = result?.totalRecords > 0 ? (int)Math.Ceiling((double)result.totalRecords / pageSize) : 0;
+                if (lstProducts.Count == 0)
+                {
+                    loading = "No record found.";
+                }
+            }
+            else
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ API Response: {response.StatusCode}");
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    Console.WriteLine("❌ 404 Not Found: The requested resource was not found.");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    Console.WriteLine("❌ 401 Unauthorized: Token is invalid or expired.");
+                    await _localStorage.RemoveItemAsync("authToken");
+                    navigator.NavigateTo("/");
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in GetProductData: {ex.Message}");
+        }
+    }
+    private async Task NextPage()
+    {
+        if (productsPageNumber < productsTotalPages)
+        {
+            productsPageNumber++;
+            await GetAllProduct();
+        }
+    }
+    private async Task PreviousPage()
+    {
+        if (productsPageNumber > 1)
+        {
+            productsPageNumber--;
+            await GetAllProduct();
+        }
+    }
+    private async Task ChangePage(int page)
+    {
+        productsPageNumber = page;
+        await GetAllProduct();
+    }
+
+    private bool isAscending = true;
+
+    private async Task SortTable(string columnName)
+    {
+        if (productsSortColumn == columnName)
+        {
+            isAscending = !isAscending;
+        }
+        else
+        {
+            productsSortColumn = columnName;
+            isAscending = true;
+        }
+
+        if (isAscending)
+        {
+            sortOrder = "asc";
+        }
+        else
+        {
+            sortOrder = "desc";
+        }
+        await GetAllProduct();
+    }
+   
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        string currentSearch = e.Value?.ToString();
+
+        _debounceTimer?.Stop();
+        _debounceTimer = new System.Timers.Timer(800);
+        _debounceTimer.Elapsed += async (sender, args) =>
+        {
+            _debounceTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                search = currentSearch;
+                await GetAllProduct();
+                StateHasChanged();
+            });
+        };
+        _debounceTimer.Start();
+    }
+}

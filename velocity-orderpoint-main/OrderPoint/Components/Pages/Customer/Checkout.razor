@@ -1,0 +1,662 @@
+﻿@page "/checkout"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+@using Blazored.Toast.Services
+@using OrderPoint.Components.Common
+@using OrderPoint.Domain.ViewModel
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using OrderPoint.Helper
+@using OrderPoint.Services
+@inject NavigationManager navigator
+@inject HttpClient httpClient
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject IJSRuntime JSRuntime
+@inject IToastService toastService
+@inject CookieService CookieService
+@inject IJSRuntime JSRuntime
+
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject NotificationService NotificationService
+<PageTitle>Order Point | Products Management</PageTitle>
+<Loader visible=loader />
+<AppToast />
+<Auth setAuth="@setAuth" />
+<style>
+
+    input[type="checkbox"]:not(.form-check-input) {
+    appearance: none; /* remove native style */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 1px solid #000; /* your visible black border */
+    border-radius: 2px !important;
+    background-color: #fff; /* white box like jsTree */
+    cursor: pointer;
+    position: relative;
+    }
+
+    /* Checked state (draw checkmark) */
+    input[type="checkbox"]:not(.form-check-input):checked::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 6px;
+    width: 4px;
+    height: 9px;
+    border: solid #000;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    }
+
+    /* Optional hover effect */
+    input[type="checkbox"]:not(.form-check-input):hover {
+    background-color: #f3f3f3;
+    }
+
+
+    input[type="checkbox"]:not(.form-check-input):disabled {
+    opacity: 0.3 !important;
+    }
+
+    input[type=radio] {
+    accent-color: #000 !important;
+    }
+
+</style>
+<div class="min-h-screen mt-3 position-relative">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 relative">
+
+        @if (!string.IsNullOrEmpty(Userrole) && Userrole.Contains(Roles.Customer))
+        {
+            <div class="logoCustomerhide absolute top-[-97px] left-0 z-50 flex justify-end items-center pe-4 me-2">
+                <div>
+                    <img src="/images/Order1.png"
+                    alt="Logo"
+                    class="mx-auto w-[200px] h-[70px] object-contain filter brightness-[0.5]" />
+                </div>
+            </div>
+        }
+
+        <!-- Title -->
+        <div class="text-2xl font-semibold text-black">
+            Shopping Cart  
+        </div>
+
+
+
+        <!-- Buttons -->
+        <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <a href="/product-listing"
+            class="rounded-full border border-[#4E4D4D] text-dark px-4 py-2
+                  text-[16px] text-center w-full sm:w-auto">
+                <i class="fa-regular fa-paper-plane pe-1"></i> Continue Shopping
+            </a>
+
+
+            <a href="javascript:;"
+            @onclick="()=>CreateOrder()"
+            class="bg-[#4E4D4D] text-white px-4 py-2 rounded-full hover:bg-[#3a3a3a]
+                  text-[16px] text-center w-full sm:w-auto">
+                <i class="fa fa-truck pe-1"></i> Place Order
+            </a>
+        </div>
+    </div>
+
+
+
+    <div class="row">
+
+        <div class="col-lg-8">
+            <div class="bg-[#F5F5F5] px-4 py-2 rounded-xl flex gap-4 items-start shadow-sm mb-3">
+                <div class="flex-1 space-y-1">
+                    <div class="flex justify-between items-center ">
+                        <div class="d-flex align-items-center ms-2">
+                            <input type="checkbox" @bind="IsAllChecked" @onclick="()=>checkedAllItems()" />
+
+
+                            <p class="font-semibold text-[#1A1A1A] text-base ms-2">
+                                <!--!-->
+                                Select All (@cartList.Count item(s))
+                            </p>
+                        </div><!--!-->
+                        <button class="rounded-full text-gray-400 flex-grow-1 flex-lg-grow-0 text-[12px] text-center me-2 mb-2 mb-lg-0 hover:text-red-500" @onclick="()=>RemovedCheckedItem()">
+                            <!--!--><i class="fa-solid fa-trash-alt pe-1   hover:text-red-500"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+
+        </div>
+        @if (cartList.Count() > 0)
+        {
+            <div class="col-lg-8">
+                @foreach (var item in cartList)
+                {
+                    <div class="bg-[#F5F5F5] p-4 rounded-xl flex gap-4 items-start shadow-sm mb-3">
+
+
+                        <!-- Content -->
+                        <div class="flex-1 space-y-1">
+                            <div class="flex justify-between items-start">
+                                <div class="d-flex align-items-center">
+
+                                    <input type="checkbox" checked="@item.IsChecked" @onclick="()=>CheckedRemoveItem(item)" />
+                                    <p class="font-semibold text-[#1A1A1A] text-base ms-2">@item.ProductName</p>
+
+                                </div>
+                                <!-- Trash Icon -->
+                                <div class="d-flex align-items-center">
+                                    <button @onclick="()=>NotesDetail(item)" data-bs-toggle="modal" class="text-gray-400 hover:text-[#1D4ED8] me-2">
+                                        <i class="fa fa-pen"></i>
+                                    </button>
+                                    <button class="text-gray-400 hover:text-red-500" @onclick="()=>RemoveItem(item)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+
+
+
+
+                                </div>
+                            </div>
+                            @{
+                                string increase = "Increase";
+                                string decrease = "decrease";
+                            }
+
+                            <!-- Quantity & Price -->
+
+
+                            <div class="flex justify-between items-center mt-2">
+                                <!-- Quantity Selector -->
+                                <div class="d-flex align-items-center">
+                                    <span class="text-[#1A1A1A] font-inter font-normal text-base leading-[150%] tracking-[0%] pe-2">
+                                        Qty@(item.QuantityTypeId == 0 ? " (kg)" : ""):
+                                    </span>
+                                    <div class="flex items-center border border-black bg-white rounded-full px-2 py-1">
+                                        <button class="px-2 text-lg font-semibold text-gray-700" @onclick="()=>SetQuantity(item, decrease)">−</button>
+                                        <span class="px-2 text-sm font-medium text-gray-900">@item.Quantity</span>
+                                        <button @onclick="()=>SetQuantity(item, increase)" class="px-2 text-lg font-semibold text-gray-700">+</button>
+                                    </div>
+                                </div>
+                                <p class="text-base font-semibold text-[#1A1A1A]">£/$@Convert.ToDecimal(item.Price).ToString("F3")@(item.QuantityTypeId == 0 ? " (per kg)" : " (each)")</p>
+                            </div>
+
+                            <!-- Note -->
+                            <div class="flex justify-between items-center mt-2">
+
+                                <p class="text-sm text-gray-500">@item.Description</p>
+
+                            </div>
+
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+
+
+        <div class="col-lg-4">
+            <EditForm Model="orderModel" OnValidSubmit="CreateOrder">
+                <DataAnnotationsValidator />
+
+                <div class="mb-4">
+                    <label class="block text-md font-medium text-black mb-1 ">Your Reference Number</label>
+                    <input type="text" @bind="orderModel.OrderNumber" class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1 valid">
+                    <ValidationMessage For="@(()=>orderModel.OrderNumber)" />
+                </div>
+                <div class="mb-4">
+                    <label class="block text-md font-medium text-black mb-1 ">
+                        Select a date for you order
+                    </label>
+                    <InputDate @bind-Value="orderModel.OrderDate"
+                    class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1"
+                    @attributes="InputAttributes" />    
+
+                    <ValidationMessage For="@(()=>orderModel.OrderDate)" />
+                </div>
+                <div class="">
+                    <label class="block text-md font-medium text-black mb-1 ">
+                        General notes for your order
+                    </label>
+                    <textarea @bind="orderModel.OrderNotes" type="text" class="w-full px-6 py-2 rounded-xl border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1" rows="2"></textarea>
+                    <ValidationMessage For="@(()=>orderModel.OrderNotes)" />
+                </div>
+
+            </EditForm>
+        </div>
+
+
+    </div>
+</div>
+<div class="modal fade" id="editNotesModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="viewCargoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-2xl font-semibold text-black" id="viewCargoModalLabel">
+                    Add notes for this item
+                </h5>
+                <button type="button" class="text-gray-500 hover:text-gray-700" data-bs-dismiss="modal"><img src="./images/close.png"></button>
+            </div>
+            <div class="modal-body">
+                <div class="">
+                    <textarea @bind="CommentText"
+                    class="w-full px-6 py-2 rounded-md mb-0 border border-[#C4C4C4] focus:outline-none focus:ring-1 focus:ring-[#D2D2D2]"
+                    rows="4">
+                    </textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" data-bs-dismiss="modal" class="rounded-full border border-[#4E4D4D] text-dark px-4 py-2 flex-grow md:flex-none text-[16px] text-center">Cancel</button>
+                <button @onclick="()=>AddtoCartNotes()" class="bg-[#4E4D4D] rounded-full border-black text-white border px-4 py-2 hover:bg-[#4E4D4D] flex-grow md:flex-none text-[14px] text-center">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+@code {
+    [Parameter]
+    public bool loader { get; set; } = false;
+    public bool IsAllChecked { get; set; } = false;
+    private bool isAuthenticated;
+
+    private DateTime SelectedDate { get; set; } = DateTime.Today;
+    private string Userrole;
+    private Int64? CategoryID { get; set; }
+    private Dictionary<string, object> InputAttributes = new()
+{
+        { "min", DateTime.Today.ToString("yyyy-MM-dd") }
+    };
+    private System.Timers.Timer _debounceTimer;
+    private string loading { get; set; } = "Loading...";
+    private List<ProductsViewModel> lstCategoryList = new();
+    private List<ProductsViewModel> cartList = new List<ProductsViewModel>();
+    private string CommentText { get; set; } = "";
+    private Int32 SelectedQty { get; set; }
+    private Int64 SelectedProductID { get; set; }
+    private string ReferenceNumber { get; set; }
+    private string GeneralNotes { get; set; }
+    OrderPlacementModel orderModel = new()
+    {
+        OrderNumber = String.Empty,
+        OrderNotes = String.Empty,
+        OrderDate = DateTime.Now,
+        OrderItems = new List<ProductsViewModel>()
+    };
+
+    private void setAuth(bool val)
+    {
+        if (val)
+        {
+            isAuthenticated = val;
+            StateHasChanged();
+        }
+        else
+        {
+            navigator.NavigateTo("/login", true);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            loader = true;
+            string token = await _localStorage.GetItemAsync<string>("authToken");
+
+            var isTokenValid = await AuthProvider.IsTokenValidAsync();
+
+            if (!string.IsNullOrEmpty(token) && isTokenValid)
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                await AuthProvider.InitializeAsync();
+                Userrole = await AuthProvider.GetClaimValue(ClaimTypesEx.Role);
+                await GetAllProduct();
+            }
+            else
+            {
+                navigator.NavigateTo("/login");
+            }
+
+        }
+
+
+    }
+    private async Task GetAllProduct()
+    {
+        // tableLabel = "Loading...";
+        loader = false;
+        List<ProductsViewModel> list = await _localStorage.GetItemAsync<List<ProductsViewModel>>("CartItemList");
+        if (list == null)
+        {
+            cartList = new List<ProductsViewModel>();
+        }
+        else
+        {
+            cartList = list;
+
+        }
+        StateHasChanged();
+    }
+    private async Task SetQuantity(ProductsViewModel item, string type)
+    {
+        var cartitem = cartList.FirstOrDefault(i => i.Id == item.Id);
+        if (cartitem != null)
+        {
+            if (type == "Increase")
+            {
+                item.Quantity += 1;
+                item.Quantity = Convert.ToDecimal(item.Quantity.ToString("F3"));
+            }
+            else
+            {
+                if (item.Quantity == 1)
+                {
+                    item.Quantity = 1;
+                    item.Quantity = Convert.ToDecimal(item.Quantity.ToString("F3"));
+                }
+                else
+                {
+                    item.Quantity -= 1;
+                    item.Quantity = Convert.ToDecimal(item.Quantity.ToString("F3"));
+                }
+            }
+            cartitem = item;
+            await _localStorage.SetItemAsync("CartItemList", cartList);
+        }
+
+
+
+    }
+
+    private async Task NotesDetail(ProductsViewModel item)
+    {
+
+        try
+        {
+            CommentText = item.Description;
+            SelectedProductID = item.Id;
+            await JSRuntime.InvokeVoidAsync("showModal", "editNotesModal");
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        // StateHasChanged();
+    }
+    private async Task AddtoCartNotes()
+    {
+
+        try
+        {
+            var cartitem = cartList.FirstOrDefault(i => i.Id == SelectedProductID);
+            if (cartitem != null)
+            {
+                cartitem.Description = CommentText;
+            }
+
+            await _localStorage.SetItemAsync("CartItemList", cartList);
+            await JSRuntime.InvokeVoidAsync("hideModal", "editNotesModal");
+            // CookieService.SetList("CartItemList", cartList);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        // StateHasChanged();
+    }
+    private async Task RemoveItem(ProductsViewModel item)
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("ShowConfirmSwal", "Are you sure?", "Do you want to delete this item?", "warning");
+        if (confirmed)
+        {
+            var cartitem = cartList.FirstOrDefault(i => i.Id == item.Id);
+            if (cartitem != null)
+            {
+                cartList.Remove(cartitem);
+                await _localStorage.SetItemAsync("CartItemList", cartList);
+            }
+        }
+    }
+    private async Task checkedAllItems()
+    {
+
+        IsAllChecked = !IsAllChecked;
+
+
+        if (cartList != null && cartList.Count > 0)
+        {
+            foreach (var item in cartList)
+            {
+
+                item.IsChecked = IsAllChecked;
+            }
+
+            await _localStorage.SetItemAsync("CartItemList", cartList);
+        }
+
+
+    }
+    private async Task CheckedRemoveItem(ProductsViewModel item)
+    {
+
+
+        var cartitem = cartList.FirstOrDefault(i => i.Id == item.Id);
+        if (cartitem != null)
+        {
+            cartitem.IsChecked = !cartitem.IsChecked;
+            if (cartList.Count() == cartList.Where(k => k.IsChecked == true).ToList().Count())
+            {
+                IsAllChecked = true;
+            }
+            else
+            {
+                IsAllChecked = false;
+            }
+            await _localStorage.SetItemAsync("CartItemList", cartList);
+        }
+
+    }
+
+    private async Task RemovedCheckedItem()
+    {
+
+        var cartitemList = cartList.Where(i => i.IsChecked).ToList();
+
+        if (cartitemList.Any())
+        {
+            bool confirmed = await JSRuntime.InvokeAsync<bool>("ShowConfirmSwal", "Are you sure?", "Do you want to delete selected items?", "warning");
+            if (confirmed)
+            {
+                foreach (var item in cartitemList)
+                {
+                    cartList.Remove(item);
+                }
+
+                await _localStorage.SetItemAsync("CartItemList", cartList);
+            }
+        }
+        else{
+            if (cartList.Count==0){
+                toastService.ShowError("Your shopping cart is currently empty.");
+            }
+            else{
+                toastService.ShowError("Please select items first.");
+            }
+
+            
+
+        }
+
+    }
+
+    public async Task CreateOrder()
+    {
+        try
+
+        {
+            if (Userrole.Contains(Roles.Wholesaler))
+            {
+                navigator.NavigateTo("/product-listing");
+
+            }
+            else
+            {
+                if (cartList.Where(k => k.IsChecked == true).ToList().Count() > 0)
+                {
+                    
+
+                    loader = true;
+
+                    orderModel.OrderItems = cartList.Where(k => k.IsChecked == true).ToList();
+                    var apiUrl = $"{_configuration["API_App_URL"]}/api/Customer/CreateOrder";
+                    var resJson = JsonSerializer.Serialize(orderModel);
+                    var content = new StringContent(resJson, System.Text.Encoding.UTF8, "application/json");
+                    var response = new HttpResponseMessage();// await httpClient.PostAsync($"{_configuration["API_App_URL"]}/api/Products/CreateProduct", content);
+                    response = await httpClient.PostAsync(apiUrl, content);
+                    loader = false;
+                    if (response == null)
+                    {
+                        Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                        toastService.ShowError("API Response is null. Possible network error or invalid URL. ");
+                        return;
+                    }
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var jsonString = await response.Content.ReadAsStringAsync();
+                        var result = JsonSerializer.Deserialize<APIResponse>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        if (result.Success)
+                        {
+                            SendEmail();
+                            List<ProductsViewModel> lst = new List<ProductsViewModel>();
+                            await _localStorage.SetItemAsync("CartItemList", lst);
+
+
+                        }
+                        else
+                        {
+                            toastService.ShowError(result.Message);
+                        }
+                        //  if (IsCreateForCustomer == false)
+
+
+                    }
+                    else
+                    {
+                        var jsonString = await response.Content.ReadAsStringAsync();
+                    }
+
+                }
+                else
+                {
+
+                    if (cartList.Count() == 0)
+                    {
+                        toastService.ShowError("Your shopping cart is currently empty.");
+                    }
+                    else
+                    {
+                        toastService.ShowError("Please select items first.");
+                    }
+                   // toastService.ShowError("Please select items first.");
+
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+
+        }
+        finally
+        {
+            // if (lstProducts.Count == 0)
+            // {
+            //     tableLabel = "No record found.";
+            // }
+            StateHasChanged();
+        }
+
+
+    }
+    public async Task SendEmail()
+    {
+        try
+
+        {
+
+
+
+
+            loader = true;
+            // orderModel.OrderNumber = ReferenceNumber;
+            //orderModel.OrderNotes = GeneralNotes;
+            //orderModel.OrderDate = SelectedDate;
+            //orderModel.OrderItems = cartList;
+            orderModel.OrderItems = cartList.Where(k => k.IsChecked == true).ToList();
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Customer/SendOrdrEmail";
+            var resJson = JsonSerializer.Serialize(orderModel);
+            var content = new StringContent(resJson, System.Text.Encoding.UTF8, "application/json");
+            var response = new HttpResponseMessage();// await httpClient.PostAsync($"{_configuration["API_App_URL"]}/api/Products/CreateProduct", content);
+            response = await httpClient.PostAsync(apiUrl, content);
+            loader = false;
+            if (response == null)
+            {
+                Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                toastService.ShowError("API Response is null. Possible network error or invalid URL. ");
+                return;
+            }
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<APIResponse>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (result.Success)
+                {
+                    NotificationService.CurrentOrder = orderModel;
+                    List<ProductsViewModel> lst = new List<ProductsViewModel>();
+                    await _localStorage.SetItemAsync("CartItemList", lst);
+                    navigator.NavigateTo("/Message");
+                }
+                else
+                {
+                    toastService.ShowError(result.Message);
+                }
+                //  if (IsCreateForCustomer == false)
+
+
+            }
+
+
+
+
+
+
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+
+        }
+        finally
+        {
+            // if (lstProducts.Count == 0)
+            // {
+            //     tableLabel = "No record found.";
+            // }
+            StateHasChanged();
+        }
+
+
+    }
+
+
+}

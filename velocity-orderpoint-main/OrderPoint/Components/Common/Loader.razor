@@ -1,0 +1,13 @@
+﻿@using BlazorBootstrap
+@if (visible)
+{
+    <div id="loader">
+        <Spinner Type="SpinnerType.Dots" Color="SpinnerColor.Dark" />
+    </div>
+
+}
+
+@code {
+    [Parameter]
+    public bool visible { get; set; }
+}

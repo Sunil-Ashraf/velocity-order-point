@@ -1,0 +1,664 @@
+﻿@page "/Customer-product-listing"
+
+@rendermode InteractiveServer
+@using Blazored.Toast.Services
+@using OrderPoint.Components.Common
+@using OrderPoint.Domain.ViewModel
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using OrderPoint.Helper
+@using OrderPoint.Services
+@inject NavigationManager navigator
+@inject HttpClient httpClient
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject IJSRuntime JSRuntime
+@inject IToastService toastService
+@inject CookieService CookieService
+@inject IJSRuntime JSRuntime
+<PageTitle>Order Point | Products Management</PageTitle>
+<Loader visible=loader />
+<AppToast />
+<Auth setAuth="@setAuth" />
+<div class="min-h-screen mt-3 position-relative">
+   
+    @if (isAuthenticated)
+    {
+        if (!IsCustomerRole)
+        {
+            <div class="d-flex justify-content-between my-2  align-items-center pe-4 me-2 divLooking" style=" position: absolute; top: -85px; left:40px; z-index: 11;">
+
+
+                <div class="d-flex justify-content-end align-items-center">
+                    @if (IsCustomerRole)
+                    {
+                        <div>
+                            <img src="/images/Order1.png" alt="Logo" class="mx-auto w-[200px] h-[70px] object-contain filter brightness-[0.5]">
+                        </div>
+                    }
+                    <div class="position-relative me-2 mt-2 divSearch">
+                        <input type="search" placeholder="What are you looking for?" class="w-[350px] px-6 py-2 rounded-full  focus:outline-none" @bind="search" @oninput="OnSearchChanged" />
+                        @if (string.IsNullOrWhiteSpace(search))
+                        {
+
+                            <span class="position-absolute top-[8px] right-[13px] text-[#ffffff]">
+                                <i class="fa fa-search"></i>
+                            </span>
+                        }
+                    </div>
+
+                </div>
+
+            </div>
+        }
+        else
+        {
+            <div class="d-flex justify-content-between my-2  align-items-center pe-4 me-2 divLooking" style=" position: absolute; top: -97px; z-index: 999;">
+
+
+                <div class="d-flex justify-content-end align-items-center">
+                    @if (IsCustomerRole)
+                    {
+                        <div>
+                            <img src="/images/Order1.png" alt="Logo" class="mx-auto w-[200px] h-[70px] object-contain filter brightness-[0.5]">
+                        </div>}
+                    <div class="position-relative me-2 mt-2 divSearch">
+                        <input type="search" placeholder="What are you looking for?" class="w-[350px] px-6 py-2 rounded-full  focus:outline-none" @bind="search" @oninput="OnSearchChanged" />
+                        @if (string.IsNullOrWhiteSpace(search))
+                        {
+
+                            <span class="position-absolute top-[8px] right-[13px] text-[#ffffff]">
+                                <i class="fa fa-search"></i>
+                            </span>
+                        }
+                    </div>
+
+                </div>
+
+            </div>
+        }
+
+        <div class="text-end position-relative divCart">
+            <a href="javascript:;" title="Checkout" style="position: absolute; top: -66px; z-index: 99; right: 250px;margin-right:15px" class="text-[#000000] checkout" @onclick="()=>Checkout()">
+                <img src="/images/ShoppingCartSimple.png" class="img-fluid" alt="Alternate Text" />
+
+            </a>
+            
+        </div>
+        <div class="flex justify-content-between align-items-center mb-3 bg-[#F2F2F2] rounded-lg px-3 py-1">
+            <div>
+ 
+                <img src="@($"{_configuration["API_App_URL"]}/WholesalePictures/{WholesalerImageLogo}")"
+                onerror="this.onerror=null;this.src='./images/PlaceHolder.png';"
+                class=" img-fluid w-[100px]" alt="Alternate Text" />
+            </div>
+            <div class="text-2xl font-semibold text-black">
+                @Wholesaler
+            </div>
+        </div>
+        <div class="row">
+
+            <div class="col-lg-6">
+                    <label>Category</label>
+                <div class="mt-2">
+                    <select @onchange="OnCategoryChanged" type="text" class="w-full px-6 pr-10 py-2 rounded-full border border-[#C4C4C4] focus:outline-none focus:ring-[#D2D2D2]  focus:ring-1">
+
+                        <option value="">All</option>
+                        @foreach (var item in lstCategoryList)
+                        {
+                            <option value="@item.Id">@item.CategoryName</option>
+                        }
+                    </select>
+
+                </div>
+            </div>
+            <div class="col-lg-6 text-end">
+            <div style="margin-top:29px">
+
+                <button @onclick="()=>EmptCart()" class="rounded-full border border-[#4E4D4D] text-dark px-4 py-2 flex-grow md:flex-none text-[16px] text-center  me-2">
+                    <i class="fa-solid fa-basket-shopping pe-1 text-[#4E4D4D]"></i>Empty Basket
+                </button>
+                <label class="text-[#1A1A1A] font-inter font-normal text-base leading-[150%] tracking-[0] pe-2">
+                    @totalRecords products
+                </label>
+
+           </div>
+           </div>
+
+
+
+
+
+        </div>
+
+        @if (lstProducts.Count() > 0)
+        {
+            <div class="row mt-3">
+                @foreach (var item in lstProducts)
+                {
+                    bool isChecked = false;
+                    if (cartList != null)
+                    {
+                        var cartitem = cartList.FirstOrDefault(i => i.Id == item.Id);
+                        if (cartitem != null)
+                        {
+                            if (cartitem.IsItemInCart.HasValue == cartitem.IsItemInCart.Value == true)
+                            {
+                                isChecked = true;
+                            }
+                            if (cartitem.Quantity > 1)
+                            {
+                                item.Quantity = cartitem.Quantity;
+                            }
+                        }
+                    }
+                    <div class="col-lg-3 mb-3">
+                        <div class="bg-[#F2F2F2] rounded-[16px] p-6 flex flex-col justify-between h-full min-h-[100px]">
+                            <div>
+                                <div><img src="/images/Frame.png" class="img-fluid w-100" /></div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[#1A1A1A] font-inter font-normal text-base leading-[150%] tracking-[0%] pt-2">
+                                        @item.ProductName @(item.QuantityTypeId==0? "(KG)": "")
+                                    </span>
+                                    @if (isChecked)
+                                    {
+                                        <span class="relative">
+                                            <i class="fa fa-check fs-4 text-success" style=" position: absolute; top: -6px; right: 13px;"></i>
+                                        </span>
+                                    }
+                                </div>
+
+                                <div class="flex items-center justify-content-between my-2">
+                                    <div class="flex items-center gap-2">
+                                        @{
+                                            string increase = "Increase";
+                                            string decrease = "decrease";
+                                        }
+                                        <div class="d-flex align-items-center" style=" background: white; padding: 6px 12px; border-radius: 50px;border:1px solid #000000;">
+                                            <button type="button" @onclick="() => SetQuantity(item, decrease, isChecked)">
+                                                <i class="fa fa-minus text-sm"></i>
+                                            </button>
+                                            <input type="text" @bind="item.Quantity" min="0.001" max="50000"
+                                            class="border-0 bg-transparent focus:outline-none  py-0 text-center text-sm"
+                                            style="width: 40px;">
+                                            <button type="button" @onclick="() => SetQuantity(item, increase, isChecked)">
+                                                <i class="fa fa-plus text-sm"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-[#1A1A1A] font-inter font-semibold text-[18px] leading-[150%] tracking-[0%]">
+                                            £/$@Convert.ToDecimal(item.Price).ToString("F3")
+                                            
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-auto pt-2">
+                                @if (isChecked)
+                                {
+                                    <button @onclick="() => AddtoCart(item, true)"
+                                    class="bg-[#4E4D4D] text-white px-4 py-2 rounded-full hover:bg-[#4E4D4D] flex-grow md:flex-none text-[16px] text-center w-full">
+                                        Update Cart
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button @onclick="() => AddtoCart(item, false)"
+                                    class="bg-[#4E4D4D] text-white px-4 py-2 rounded-full hover:bg-[#4E4D4D] flex-grow md:flex-none text-[16px] text-center w-full">
+                                        Add To Cart
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                    </div>
+                }
+
+            </div>
+            <div class="row">
+                <div class="flex justify-center items-center  mt-4">
+                    <!-- Previous Button -->
+                    <button @onclick="PreviousPage" disabled="@(productsPageNumber == 1)"
+                    class="px-2 py-[0.7rem] border rounded-md bg-white text-myblueGray hover:bg-gray-200 disabled:opacity-50">
+                        <img src="./images/back.png" alt="Previous" />
+                    </button>
+
+                    <!-- Page Numbers -->
+                    @for (int i = 1; i <= productsTotalPages; i++)
+                    {
+                        int currentPage = i; // Create a local copy of i
+
+                        if (currentPage == 1 || currentPage == 2 || currentPage == productsTotalPages - 1 || currentPage == productsTotalPages)
+                        {
+                            <!-- Always show first two and last two pages -->
+                            <button @onclick="() => ChangePage(currentPage)"
+                            class="px-3 py-1 border rounded-md bg-white hover:bg-gray-200 @(productsPageNumber == currentPage ? "bg-gray-100 font-bold" : "")">
+                                @currentPage
+                            </button>
+                        }
+                        else if (currentPage >= productsPageNumber - 1 && currentPage <= productsPageNumber + 1)
+                        {
+                            <button @onclick="() => ChangePage(currentPage)"
+                            class="px-3 py-1 border rounded-md bg-white hover:bg-gray-200 @(productsPageNumber == currentPage ? "bg-gray-100 font-bold" : "")">
+                                @currentPage
+                            </button>
+                        }
+                        else if ((currentPage == 3 && productsPageNumber > 4) || (currentPage == productsTotalPages - 2 && productsPageNumber < productsTotalPages - 3))
+                        {
+                            <span class="px-3 py-1 bg-white">...</span>
+                        }
+                    }
+
+                    <!-- Next Button -->
+                    <button @onclick="NextPage" disabled="@(productsPageNumber == productsTotalPages)"
+                    class="px-2 py-[0.7rem] border rounded-md bg-white hover:bg-gray-200 disabled:opacity-50">
+                        <img src="./images/next.png" alt="Next" />
+                    </button>
+                </div>
+            </div>
+        }
+
+    }
+</div>
+<div class="modal fade" id="editNotesModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="viewCargoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-2xl font-semibold text-black" id="viewCargoModalLabel">
+                   Item notes  
+                </h5>
+                <button @onclick="()=>AddtoCartNotes(CommentText)" class="text-gray-500 hover:text-gray-700" data-bs-dismiss="modal"><img src="./images/close.png"></button>
+            </div>
+            <div class="modal-body">
+                <div class="">
+                    <textarea @bind="CommentText"
+                    class="w-full px-6 py-2 rounded-md mb-0 border border-[#C4C4C4] focus:outline-none focus:ring-1 focus:ring-[#D2D2D2]"
+                    rows="4">
+                    </textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button @onclick="()=>AddtoCartNotes(CommentText)" data-bs-dismiss="modal" class="rounded-full border border-[#4E4D4D] text-dark px-4 py-2 flex-grow md:flex-none text-[16px] text-center">Cancel</button>
+                <button @onclick="()=>AddtoCartNotes(CommentText)" class="bg-[#4E4D4D] rounded-full border-black text-white border px-4 py-2 hover:bg-[#4E4D4D] flex-grow md:flex-none text-[14px] text-center">Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public bool loader { get; set; } = false;
+
+    private bool isAuthenticated;
+    private ProductsViewModel selectedItem { get; set; }
+
+    private Int64? CategoryID { get; set; }
+    private System.Timers.Timer _debounceTimer;
+    private string loading { get; set; } = "Loading...";
+    private List<ProductsViewModel> lstCategoryList = new();
+    private List<ProductsViewModel> cartList = new List<ProductsViewModel>();
+    private string CommentText { get; set; } = "";
+    private Int32 SelectedQty { get; set; }
+    private Int64 SelectedProduct { get; set; }
+    private Int64 WholesalerID { get; set; }
+    private bool IsCustomerRole { get; set; }
+    private bool SelectedIsUpdate { get; set; }
+    private String SelectedProductName { get; set; }
+    private String UserRole { get; set; }
+    private String Wholesaler { get; set; }
+    private String WholesalerImageLogo { get; set; }
+    private void setAuth(bool val)
+    {
+        if (val)
+        {
+            isAuthenticated = val;
+            StateHasChanged();
+        }
+        else
+        {
+            navigator.NavigateTo("/login", true);
+        }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            loader = true;
+            string token = await _localStorage.GetItemAsync<string>("authToken");
+            if (!string.IsNullOrEmpty(token))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                await AuthProvider.InitializeAsync();
+                UserRole = await AuthProvider.GetClaimValue(ClaimTypesEx.Role);
+                if (UserRole == Roles.Customer)
+                {
+                    IsCustomerRole = true;
+                }
+                await GetAllCategory();
+                await GetAllProduct();
+
+            }
+            else
+            {
+                navigator.NavigateTo("/login");
+            }
+
+        }
+    }
+    private async Task GetAllCategory()
+    {
+        // tableLabel = "Loading...";
+        try
+        {
+            string id = await AuthProvider.GetClaimValue("WholesalerID");
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Product/GetAllCategoryBywholesaler?wholesalerID={id}&isGetAllCategory=true";
+            // Make the API call
+            var response = await httpClient.GetAsync(apiUrl);
+
+            if (response == null)
+            {
+                Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                return;
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<PagerResponse<ProductsViewModel>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                lstCategoryList = result?.data ?? new List<ProductsViewModel>();
+
+                Wholesaler = result.wholesalerDetail.Name;
+                WholesalerImageLogo = result.wholesalerDetail.ImagePath;
+
+            }
+            else
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ API Response: {response.StatusCode}");
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    Console.WriteLine("❌ 404 Not Found: The requested resource was not found.");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    Console.WriteLine("❌ 401 Unauthorized: Token is invalid or expired.");
+                    await _localStorage.RemoveItemAsync("authToken");
+                    navigator.NavigateTo("/");
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in GetProductData: {ex.Message}");
+        }
+    }
+    private async Task OnCategoryChanged(ChangeEventArgs e)
+    {
+        var selectedId = Convert.ToInt64(e.Value);// e.Value?.ToString();
+        CategoryID = selectedId;
+        await GetAllProduct();
+        // You can fetch user details here if needed.
+    }
+
+
+
+    private List<ProductsViewModel> lstProducts = new();
+    // Product Pagination
+    private int pageSize = 10;
+    private int productsPageNumber = 1;
+    private int productsTotalPages = 1;
+    private int totalRecords = 1;
+    private string productsSortColumn = "ProductName";
+    private string sortOrder = "asc";
+
+    private string search = string.Empty;
+
+    private async Task GetAllProduct()
+    {
+        // tableLabel = "Loading...";
+        try
+        {
+            string id = await AuthProvider.GetClaimValue("WholesalerID");
+            string customerID = await AuthProvider.GetClaimValue("CustomerID");
+
+            cartList = await _localStorage.GetItemAsync<List<ProductsViewModel>>("CartItemList");
+            if (cartList == null)
+            {
+                cartList = new List<ProductsViewModel>();
+            }
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Product/GetAllCustomerProductsBywholesaler?pageNumber={productsPageNumber}&pageSize={pageSize}&sortColumn={productsSortColumn}&sortOrder={sortOrder}&search={search}&wholesalerID={id}&categoryID={CategoryID}&customerID={customerID}";
+            var response = await httpClient.GetAsync(apiUrl);
+            loader = false;
+            if (response == null)
+            {
+                Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                return;
+            }
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<PagerResponse<ProductsViewModel>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                lstProducts = result?.data ?? new List<ProductsViewModel>();
+                productsTotalPages = result?.totalRecords > 0 ? (int)Math.Ceiling((double)result.totalRecords / pageSize) : 0;
+                totalRecords = result?.totalRecords > 0 ? result.totalRecords : 0;
+                if (lstProducts.Count == 0)
+                {
+                    loading = "No record found.";
+                }
+            }
+            else
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ API Response: {response.StatusCode}");
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    Console.WriteLine("❌ 404 Not Found: The requested resource was not found.");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    Console.WriteLine("❌ 401 Unauthorized: Token is invalid or expired.");
+                    await _localStorage.RemoveItemAsync("authToken");
+                    navigator.NavigateTo("/login");
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in GetProductData: {ex.Message}");
+        }
+    }
+    private async Task NextPage()
+    {
+        if (productsPageNumber < productsTotalPages)
+        {
+            productsPageNumber++;
+            await GetAllProduct();
+        }
+    }
+    private async Task PreviousPage()
+    {
+        if (productsPageNumber > 1)
+        {
+            productsPageNumber--;
+            await GetAllProduct();
+        }
+    }
+    private async Task ChangePage(int page)
+    {
+        productsPageNumber = page;
+        await GetAllProduct();
+    }
+
+    private bool isAscending = true;
+
+    private async Task SortTable(string columnName)
+    {
+        if (productsSortColumn == columnName)
+        {
+            isAscending = !isAscending;
+        }
+        else
+        {
+            productsSortColumn = columnName;
+            isAscending = true;
+        }
+
+        if (isAscending)
+        {
+            sortOrder = "asc";
+        }
+        else
+        {
+            sortOrder = "desc";
+        }
+        await GetAllProduct();
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        string currentSearch = e.Value?.ToString();
+        //   private System.Timers.Timer _debounceTimer;
+        _debounceTimer?.Stop();
+        _debounceTimer = new System.Timers.Timer(800);
+        _debounceTimer.Elapsed += async (sender, args) =>
+        {
+            _debounceTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                search = currentSearch;
+                await GetAllProduct();
+                StateHasChanged();
+            });
+        };
+        _debounceTimer.Start();
+    }
+
+    private async Task SetQuantity(ProductsViewModel item, string type, bool isupdated)
+    {
+        if (type == "Increase")
+        {
+            item.Quantity += 1;
+        }
+        else
+        {
+            if (item.Quantity == 0)
+            {
+                item.Quantity = 0;
+            }
+            else
+            {
+                item.Quantity -= 1;
+            }
+        }
+        if (isupdated == true)
+        {
+            var cartitem = cartList.FirstOrDefault(k => k.Id == item.Id);
+            if (cartitem != null)
+            {
+
+                cartitem.Quantity = item.Quantity;
+
+            }
+        }
+        StateHasChanged();
+    }
+    private async Task AddtoCartNotes(string comments)
+    {
+
+        try
+        {
+            if (SelectedIsUpdate == true)
+            {
+                var cartitem = cartList.FirstOrDefault(k => k.Id == SelectedProduct);
+                if (cartitem != null)
+                {
+                    cartitem.IsItemInCart = true;
+                    cartitem.Id = selectedItem.Id;
+                    cartitem.Description = String.IsNullOrEmpty(comments) ? String.Empty : comments;
+                    cartitem.Quantity = selectedItem.Quantity;
+                    cartitem.ProductName = selectedItem.ProductName;
+                    cartitem.QuantityTypeId = selectedItem.QuantityTypeId;
+                    cartitem.Price = selectedItem.Price;
+                }
+
+            }
+            else
+            {
+                ProductsViewModel model = new ProductsViewModel();
+                model.IsItemInCart = true;
+                model.Id = selectedItem.Id;
+                model.Description = comments;
+                model.Quantity = selectedItem.Quantity;
+                model.ProductName = selectedItem.ProductName;
+                model.QuantityTypeId = selectedItem.QuantityTypeId;
+                model.Price = selectedItem.Price;
+                cartList.Add(model);
+            }
+
+
+            await _localStorage.SetItemAsync("CartItemList", cartList);
+            await JSRuntime.InvokeVoidAsync("hideModal", "editNotesModal");
+            // CookieService.SetList("CartItemList", cartList);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        // StateHasChanged();
+    }
+
+    private async Task AddtoCart(ProductsViewModel item, bool isUpdate)
+    {
+        // SelectedQty = qty;
+        // SelectedProduct = productId;
+        // SelectedProductName = name;
+        SelectedIsUpdate = isUpdate;
+        selectedItem = item;
+        var cartitem = cartList.FirstOrDefault(i => i.Id == item.Id);
+        if (cartitem != null)
+        {
+            CommentText = cartitem.Description;
+        }
+        else
+        {
+            CommentText = String.Empty;
+        }
+        await JSRuntime.InvokeVoidAsync("showModal", "editNotesModal");
+    }
+    private async Task EmptCart()
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("ShowConfirmSwal", "Are you sure?", "Do you want to empty your basket?", "warning");
+        if (confirmed)
+        {
+            List<ProductsViewModel> empcartList = new List<ProductsViewModel>();
+            cartList = empcartList;
+            await _localStorage.SetItemAsync("CartItemList", empcartList);
+            StateHasChanged();
+        }
+    }
+    private async Task Checkout()
+    {
+
+
+
+        if (cartList.Count() > 0)
+        {
+
+            navigator.NavigateTo("/checkout");
+        }
+        else
+        {
+            toastService.ShowError("Please select product to procceed");
+            // await JSRuntime.InvokeAsync<bool>("ShowSwal", "Warning","Please select product to procceed", "warning");
+        }
+
+    }
+}

@@ -1,0 +1,545 @@
+﻿@page "/view-customer"
+
+@using Blazored.Toast.Services
+@using OrderPoint.Components.Common
+
+@using OrderPoint.Domain.Common
+@using OrderPoint.Domain.ViewModel
+@using Blazored.LocalStorage
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using System.Text
+@using OrderPoint.Helper
+@inject HttpClient httpClient
+@inject NavigationManager navigator
+@inject IToastService toastService
+@rendermode InteractiveServer
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject IJSRuntime JSRuntime
+@inject NotificationService NotificationService
+<AppToast />
+ 
+<PageTitle>Order Point | Customer List</PageTitle>
+
+<Loader visible=loader />
+<Auth setAuth="@setAuth" />
+<div class="min-h-screen mt-3">
+    <div class="">
+        <div class="">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                <!-- Title -->
+                <div class="text-2xl font-semibold text-black">
+                    Customers
+                </div>
+
+                <!-- Search + Add button -->
+                <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto items-stretch md:items-center">
+                    <!-- Search box -->
+                    <div class="relative w-full md:w-64">
+                        <input type="search"
+                               placeholder="Search"
+                               class="w-full px-6 py-2 rounded-full border focus:outline-none"
+                               @bind="search"
+                               @oninput="OnSearchChanged" />
+                        @if (string.IsNullOrWhiteSpace(search))
+                        {
+                            <span class="absolute top-2.5 right-4 text-gray-400">
+                                <i class="fa fa-search"></i>
+                            </span>
+                        }
+                    </div>
+
+                    <!-- Add customer button -->
+                    <a href="/view-customer/add-customer/0"
+                       class="bg-[#4E4D4D] text-white px-4 py-2 rounded-full hover:bg-[#3a3a3a]
+                  text-[16px] text-center w-full md:w-auto">
+                        <i class="fa fa-plus pe-2"></i>Add Customer
+                    </a>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-[0.9rem] border ">
+                <table class="table-auto  w-full    text-left text-sm ">
+                    <thead class="text-sm font-medium    text-black bg-[#F7F7F7] ">
+                        <tr>
+                         
+                            <th class="px-4 py-2" @onclick="() => SortTable(nameof(CustomerModel.CustomerName))">
+                                <button class="flex items-center space-x-1">
+                                    <span> Name </span>
+                                    <i class="bi bi-arrow-up @(customerSortColumn == nameof(CustomerModel.CustomerName) && isAscending ? "text-black font-bold" : "text-gray-400")" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                    <i class="bi bi-arrow-down @(customerSortColumn == nameof(CustomerModel.CustomerName) && !isAscending ? "text-black font-bold" : "text-gray-400")" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                </button>
+                            </th>
+                            <th class="px-4 py-2" @onclick="() => SortTable(nameof(CustomerModel.WholesalerReference))">
+                                <button class="flex items-center space-x-1">
+                                    <span> Wholesaler Reference </span>
+                                    <i class="bi bi-arrow-up @(customerSortColumn == nameof(CustomerModel.WholesalerReference) && isAscending ? "text-black font-bold" : "text-gray-400")" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                    <i class="bi bi-arrow-down @(customerSortColumn == nameof(CustomerModel.WholesalerReference) && !isAscending ? "text-black font-bold" : "text-gray-400")" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                </button>
+                            </th>
+
+                           
+                            <th class="px-4 py-2" @onclick="() => SortTable(nameof(CustomerModel.NoOfuser))">
+                                <button class="flex items-center space-x-1">
+                                    <span class="flex items-center text-nowrap"> No. of user </span>
+
+                                <i class="bi bi-arrow-up @(customerSortColumn == nameof(CustomerModel.NoOfuser) && isAscending ? "text-black font-bold" : "text-gray-400")" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                <i class="bi bi-arrow-down @(customerSortColumn == nameof(CustomerModel.NoOfuser) && !isAscending ? "text-black font-bold" : "text-gray-400")" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                </button>                                
+                            </th>
+                            <th class="px-4 py-2 text-center" >
+                                Action
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white  p-4 mb-6 text-sm font-normal text-black">
+                        @if (lstCustomers.Count == 0)
+                        {
+                            <tr><td colspan="6" class="text-center">No record found.</td></tr>
+                        }
+                        else
+                        {
+                            foreach (var item in lstCustomers)
+                            {
+                                <tr>
+
+                                     
+                                    <td class="px-4 py-2">@item.CustomerName</td>
+                                    <td class="px-4 py-2">@item.WholesalerReference</td>
+                                 
+                                    <td class="px-4 py-2">@item.NoOfuser</td>
+                                    <td class="px-4 py-2">
+                                        <div class="d-flex align-items-center justify-content-center gap-2">
+                                            <a href="javscript:;" @onclick="()=>GetCustomerUsersList(item.Id,item.CustomerName)"    class="text-secondary me-2" title="View Users"><i class="bi bi-eye-fill fs-5"></i></a>
+                                            <a href="javscript:;" class="text-secondary me-2" @onclick="()=>AddUser(item.Id,item.CustomerName)" title="Add New User"><i class="fa fa-plus fs-6"></i></a>
+                                            <a class="text-secondary " href="/view-customer/add-customer/@item.Id" title="Edit"><span><i class="fa fa-pencil"></i></span></a>
+                                         </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex justify-center items-center  mt-4">
+                <!-- Previous Button -->
+                <button @onclick="PreviousPage" disabled="@(customerPageNumber == 1)"
+                class="px-2 py-[0.7rem] border rounded-md bg-white text-myblueGray hover:bg-gray-200 disabled:opacity-50">
+                    <img src="./images/back.png" alt="Previous" />
+                </button>
+
+                <!-- Page Numbers -->
+                @for (int i = 1; i <= customerTotalPages; i++)
+                {
+                    int currentPage = i; // Create a local copy of i
+
+                    if (currentPage == 1 || currentPage == 2 || currentPage == customerTotalPages - 1 || currentPage == customerTotalPages)
+                    {
+                        <!-- Always show first two and last two pages -->
+                        <button @onclick="() => ChangePage(currentPage)"
+                        class="px-3 py-1 border rounded-md bg-white hover:bg-gray-200 @(customerPageNumber == currentPage ? "bg-gray-100 font-bold" : "")">
+                            @currentPage
+                        </button>
+                    }
+                    else if (currentPage >= customerPageNumber - 1 && currentPage <= customerPageNumber + 1)
+                    {
+                        <button @onclick="() => ChangePage(currentPage)"
+                        class="px-3 py-1 border rounded-md bg-white hover:bg-gray-200 @(customerPageNumber == currentPage ? "bg-gray-100 font-bold" : "")">
+                            @currentPage
+                        </button>
+                    }
+                    else if ((currentPage == 3 && customerPageNumber > 4) || (currentPage == customerTotalPages - 2 && customerPageNumber < customerTotalPages - 3))
+                    {
+                        <span class="px-3 py-1 bg-white">...</span>
+                    }
+                }
+
+                <!-- Next Button -->
+                <button @onclick="NextPage" disabled="@(customerPageNumber == customerTotalPages)"
+                class="px-2 py-[0.7rem] border rounded-md bg-white hover:bg-gray-200 disabled:opacity-50">
+                    <img src="./images/next.png" alt="Next" />
+                </button>
+            </div>
+            @*             <div class="flex justify-center items-center  mt-4"><button disabled="" class="px-2 py-[0.7rem] border rounded-md bg-white text-myblueGray hover:bg-gray-200"><img src="./images/back.png" alt="Previous"></button><button disabled="" class="px-2 py-[0.7rem] border rounded-md bg-white hover:bg-gray-200"><img src="./images/next.png" alt="Next"></button></div>
+ *@        </div>
+    </div>
+    <div class="modal fade" id="ViewUerModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="viewCargoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-2xl font-semibold text-black" id="viewCargoModalLabel">Users for @CustmerName</h5>
+                    <button type="button" class="text-gray-500 hover:text-gray-700" data-bs-dismiss="modal"><img src="./images/close.png"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="overflow-x-auto rounded-[0.9rem] border">
+                        <table class="table-auto  w-full    text-left text-sm ">
+                            <thead class="text-sm font-medium    text-black bg-[#F7F7F7] ">
+                                <tr>
+                                    <th class="px-4 py-2">
+                                        <button class="flex items-center space-x-1">
+                                            <span class="text-nowrap flex items-center ">
+                                                User name
+                                            </span>
+                                            <i class="bi bi-arrow-up text-gray-400" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                            <i class="bi bi-arrow-down text-gray-400" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                        </button>
+                                    </th>
+                                    <th class="px-4 py-2  ">
+                                        <button class="flex items-center space-x-1">
+                                            <span> Email </span>
+                                            <i class="bi bi-arrow-up text-gray-400" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                            <i class="bi bi-arrow-down text-gray-400" style=" font-size: 11px !important; width: 3px !important;"></i>
+                                        </button>
+                                    </th>
+ 
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white  p-4 mb-6 text-sm font-normal text-black">
+                                @if (customerUserList.Count() > 0)
+                                {
+                                    foreach (var item in customerUserList)
+                                    {
+                                        <tr>
+                                            <td class="px-4 py-2">@item.FirstName @item.LastName</td>
+                                            <td class="px-4 py-2">@item.Email</td>
+
+                                       
+                                        </tr>}
+                                }
+                                else{
+                                    <tr><td colspan="2" class="text-center">No record found.</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button data-bs-dismiss="modal" class="rounded-full border border-[#4E4D4D] text-dark px-4 py-2 flex-grow md:flex-none text-[16px] text-center">Cancel</button>
+                    <a href="javascript:;" @onclick="()=>AddUser(CustomerID,CustmerName)" class="bg-[#4E4D4D] rounded-full border-black text-white border px-4 py-2 hover:bg-[#4E4D4D] flex-grow md:flex-none text-[14px] text-center">Add New User</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <AddUser OnUserUpdate="GetAllCustomers" UserType="@Roles.Customer" Name="@CustmerName" CreateFor="@Roles.Customer" CustomerID="@CustomerID" WholesalerID="0" />
+ 
+</div>
+
+@code {
+    [Parameter]
+    public bool loader { get; set; } = false;
+    [Parameter]
+    public long? WholesalerID { get; set; }  
+
+    public String CustmerName   { get; set; }
+    public long CustomerID   { get; set; }
+
+
+    SignupViewModel adminmodel = new();
+    private bool isAuthenticated;
+    private void setAuth(bool val)
+    {
+        if (val)
+        {
+            isAuthenticated = val;
+            StateHasChanged();
+        }
+        else
+        {
+            navigator.NavigateTo("/login", true);
+        }
+    }
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            loader = true;
+            string token = await _localStorage.GetItemAsync<string>("authToken");
+            string msg = NotificationService.SuccessMessage;
+            if (msg != null)
+            {
+                toastService.ShowSuccess(msg);
+                NotificationService.SuccessMessage = null;
+            }
+            if (!string.IsNullOrEmpty(token))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                await GetAllCustomers();
+            }
+            else
+            {
+                loader = false;
+                navigator.NavigateTo("/login");
+            }
+
+        }
+    }
+    public class PagerResponse<T>
+    {
+        public int totalRecords { get; set; }
+        public int pageNumber { get; set; }
+        public int pageSize { get; set; }
+        public List<T> data { get; set; }
+    }
+    private System.Timers.Timer _debounceTimer;
+    private List<CustomerModel> lstCustomers = new();
+    private List<UserDetail> customerUserList = new();
+    // Product Pagination
+    private int pageSize = 10;
+    private int customerPageNumber = 1;
+    private int customerTotalPages = 1;
+    private string customerSortColumn = "CustomerName";
+    private string sortOrder = "asc";
+    private string search = string.Empty;
+    EditUseViewModel Editusernmodel = new();
+
+    private async Task GetAllCustomers()
+    {
+        // tableLabel = "Loading...";
+        try
+        {
+            loader = true;
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Customer/GetWholersalerCustomer?pageNumber={customerPageNumber}&pageSize={pageSize}&sortColumn={customerSortColumn}&sortOrder={sortOrder}&search={search}";
+            // Make the API call
+            var response = await httpClient.GetAsync(apiUrl);
+            loader = false;
+            if (response == null)
+            {
+                Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                return;
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<PagerResponse<CustomerModel>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                lstCustomers = result?.data ?? new List<CustomerModel>();
+                customerTotalPages = result?.totalRecords > 0 ? (int)Math.Ceiling((double)result.totalRecords / pageSize) : 0;
+            }
+            else
+            {
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ API Response: {response.StatusCode}");
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    Console.WriteLine("❌ 404 Not Found: The requested resource was not found.");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    Console.WriteLine("❌ 401 Unauthorized: Token is invalid or expired.");
+                    await _localStorage.RemoveItemAsync("authToken");
+                    navigator.NavigateTo("/login");
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in GetProductData: {ex.Message}");
+        }
+    }
+    private async Task NextPage()
+    {
+        if (customerPageNumber < customerTotalPages)
+        {
+            customerPageNumber++;
+            await GetAllCustomers();
+        }
+    }
+    private async Task PreviousPage()
+    {
+        if (customerPageNumber > 1)
+        {
+            customerPageNumber--;
+            await GetAllCustomers();
+        }
+    }
+    private async Task ChangePage(int page)
+    {
+        customerPageNumber = page;
+        await GetAllCustomers();
+    }
+
+    private bool isAscending = true;
+
+    private async Task SortTable(string columnName)
+    {
+        if (customerSortColumn == columnName)
+        {
+            isAscending = !isAscending;
+        }
+        else
+        {
+            customerSortColumn = columnName;
+            isAscending = true;
+        }
+
+        if (isAscending)
+        {
+            sortOrder = "asc";
+        }
+        else
+        {
+            sortOrder = "desc";
+        }
+        await GetAllCustomers();
+    }
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        string currentSearch = e.Value?.ToString();
+        //   private System.Timers.Timer _debounceTimer;
+        _debounceTimer?.Stop();
+        _debounceTimer = new System.Timers.Timer(800);
+        _debounceTimer.Elapsed += async (sender, args) =>
+        {
+            _debounceTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                search = currentSearch;
+                await GetAllCustomers();
+                StateHasChanged();
+            });
+        };
+        _debounceTimer.Start();
+
+        // search = e.Value?.ToString() ?? "";
+        // await Task.Delay(2000); // 2-second delay
+        // await GetAllCustomers();
+    }
+
+
+    private async Task GetCustomerUsersList(long customerId, string name)
+    {
+        // tableLabel = "Loading...";
+        try
+        {
+
+            CustmerName = name;
+            CustomerID = customerId;
+
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Customer/GetCustomerUserByCustomerID?customerID={customerId}";
+            // Make the API call
+            var response = await httpClient.GetAsync(apiUrl);
+
+            if (response == null)
+            {
+                Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                return;
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<PagerResponse<UserDetail>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                customerUserList = result?.data ?? new List<UserDetail>();
+                await JSRuntime.InvokeVoidAsync("showModal", "ViewUerModal");
+                StateHasChanged();
+            }
+            else
+            {
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ API Response: {response.StatusCode}");
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    Console.WriteLine("❌ 404 Not Found: The requested resource was not found.");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    Console.WriteLine("❌ 401 Unauthorized: Token is invalid or expired.");
+                    await _localStorage.RemoveItemAsync("authToken");
+                    ///navigator.NavigateTo("/login");
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in GetProductData: {ex.Message}");
+        }
+    }
+
+    private async Task AddUser(long customerId, String customerName)
+    {
+        CustmerName = customerName;
+        CustomerID = customerId;
+        await JSRuntime.InvokeVoidAsync("hideModal", "ViewUerModal");
+        await JSRuntime.InvokeVoidAsync("showModal", "addUser_modal");
+    }
+    public async Task GetUserByID(long userID)
+    {
+
+        try
+        {
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Admin/GetAdminByID?userID={userID}";
+            var response = await httpClient.GetAsync(apiUrl);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<Response<EditUseViewModel>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                Editusernmodel = result?.Data ?? new EditUseViewModel();
+                // adminmodel.IsEdit = true;
+                await JSRuntime.InvokeVoidAsync("showModal", "EditUser_modal");
+                await JSRuntime.InvokeVoidAsync("hideModal", "ViewUerModal");
+                //selectedProductIds = Model.CargoLists.Select(x => x.ProductId).ToList();
+                StateHasChanged();
+            }
+            else
+            {
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                toastService.ShowError(errorDetails);
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+            Console.WriteLine($"Error fetching supplier data: {ex.Message}");
+        }
+    }
+    public async Task DeleteUser(long userID)
+    {
+
+        try
+        {
+            bool confirmed = await JSRuntime.InvokeAsync<bool>("ShowConfirmSwal", "Are you sure?", "Do you want to delete this item?", "warning");
+            if (confirmed)
+            {
+                var apiUrl = $"{_configuration["API_App_URL"]}/api/Admin/Removeuser?userID={userID}&isDeleleUserForCustomer={true}";
+                var response = await httpClient.GetAsync(apiUrl);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonString = await response.Content.ReadAsStringAsync();
+
+                    var result = JsonSerializer.Deserialize<Response<SignupViewModel>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    adminmodel = result?.Data ?? new SignupViewModel();
+
+
+                    adminmodel.ConfirmEmailAddress = adminmodel.EmailAddress;
+
+                    await JSRuntime.InvokeVoidAsync("hideModal", "ViewUerModal");
+                    toastService.ShowSuccess("User has been Deleted successfully.");
+                    StateHasChanged();
+                    //selectedProductIds = Model.CargoLists.Select(x => x.ProductId).ToList();
+
+                }
+                else
+                {
+                    string errorDetails = await response.Content.ReadAsStringAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+            Console.WriteLine($"Error fetching supplier data: {ex.Message}");
+        }
+    }
+}
+}
+

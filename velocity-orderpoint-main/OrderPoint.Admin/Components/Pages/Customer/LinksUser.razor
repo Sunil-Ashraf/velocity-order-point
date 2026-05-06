@@ -1,0 +1,263 @@
+﻿
+
+@page "/view-customer/link-customer-user/{CustomerID:long}/{CustomerName}"
+ @using Blazored.Toast.Services
+@using OrderPoint.Admin.Components.Common
+
+@using OrderPoint.Domain.Common
+@using OrderPoint.Domain.ViewModel
+@using Blazored.LocalStorage
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using System.Text
+@inject HttpClient httpClient
+@inject NavigationManager navigator
+@inject IToastService toastService
+ @rendermode InteractiveServer
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject IJSRuntime JSRuntime
+<AppToast />
+<PageTitle>Order Point | Link User</PageTitle>
+
+<Loader visible=loader />
+<Auth setAuth="@setAuth" />
+ 
+<div class="min-h-screen mt-3">
+    <div class="">
+        <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+            <div class="text-2xl font-semibold text-black">
+                Link Existing User @CustomerName
+            </div>
+            <div class="flex flex-wrap gap-2 w-full md:w-auto items-center">
+                <a href="/view-customer" class="bg-[#4E4D4D] text-white px-4 py-2 rounded-full hover:bg-[#4E4D4D] flex-grow md:flex-none text-[16px] text-center">
+                    <i class="fa fa-arrow-left pe-2"></i>Back To List
+                </a>
+            </div>
+        </div>
+    </div>
+    <div>
+        <div class="row">
+            <div class="col-lg-6">
+                <label class="block text-md text-[16px] text-black mb-1">Select Existing User</label>
+                <select id="userSelect"  
+                        class="w-full px-6 py-2 rounded-full border border-[#C4C4C4] focus:outline-none mb-2 focus:ring-[#D2D2D2]  focus:ring-1 valid">
+                    <option value="">-- Select a user --</option>
+                    @foreach (var item in UserList)
+                    {
+                        <option value="@item.ID">@item.FirstName (@item.Email)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-6"> </div>
+            <div class="col-lg-6">
+                <small>
+                    User currently linked to:
+                    <br />
+                    @foreach (var item in customerList)
+                    {
+
+                        <span class="fw-bold">@item.FirstName</span><br />
+                    }
+
+                </small>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="text-end">
+                    <button @onclick="()=>AddCustomerLink()" class=" bg-[#4E4D4D] text-white px-4 py-2 rounded-full hover:bg-[#4E4D4D] flex-grow md:flex-none text-[16px] text-center">
+                        Save
+                    </button>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public long CustomerID { get; set; }
+    [Parameter]
+    public bool loader { get; set; } = false;
+    [Parameter]
+    public string CustomerName { get; set; }
+    public long UserID { get; set; }
+    private List<UserDetail> UserList = new();
+    private List<UserDetail> customerList = new();
+    private bool isAuthenticated;
+    AddEditCustomerModel customerModel = new();
+    private bool select2Initialized = false;
+    private DotNetObjectReference<LinksUser>? dotNetRef;
+    private void setAuth(bool val)
+    {
+        if (val)
+        {
+            isAuthenticated = val;
+            StateHasChanged();
+        }
+        else
+        {
+            navigator.NavigateTo("/", true);
+        }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            string token = await _localStorage.GetItemAsync<string>("authToken");
+            if (!string.IsNullOrEmpty(token))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+
+                await GetCustoemtUserTypeUserList();
+
+            }
+            else
+            {
+                navigator.NavigateTo("/");
+            }
+
+        }
+        if (!select2Initialized && UserList.Count > 0)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeSelect2", "userSelect");
+            dotNetRef = DotNetObjectReference.Create(this);
+
+
+            await JSRuntime.InvokeVoidAsync("initializeSelect2", "userSelect", dotNetRef);
+        }
+    }
+    private async Task GetCustoemtUserTypeUserList()
+    {
+        // tableLabel = "Loading...";
+        try
+        {
+            loader = true;
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Admin/GetuserListbyUserType?UserType={Roles.Customer}";
+            // Make the API call
+            var response = await httpClient.GetAsync(apiUrl);
+            loader = false;
+            if (response == null)
+            {
+                Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                return;
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<PagerResponse<UserDetail>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                UserList = result?.data ?? new List<UserDetail>();
+                if (UserList.Count()>0)
+                {
+
+                    await GetCustomerByID(UserList.FirstOrDefault().ID);
+                }
+
+
+            }
+            else
+            {
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ API Response: {response.StatusCode}");
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    Console.WriteLine("❌ 404 Not Found: The requested resource was not found.");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    Console.WriteLine("❌ 401 Unauthorized: Token is invalid or expired.");
+                    await _localStorage.RemoveItemAsync("authToken");
+                    // navigator.NavigateTo("/");
+                }
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in GetProductData: {ex.Message}");
+        }
+    }
+    [JSInvokable("OnUserChangedFromJS")]
+    public async Task OnUserChangedFromJS(string selectedId)
+    {
+        if (long.TryParse(selectedId, out var id))
+        {
+            await GetCustomerByID(id);
+        }
+    }
+    // private async Task OnUserChanged(ChangeEventArgs e)
+    // {
+    //     var selectedId = Convert.ToInt64(e.Value);// e.Value?.ToString();
+    //     Console.WriteLine($"Selected User ID: {selectedId}");
+    //     await  GetCustomerByID(selectedId);
+    //     // You can fetch user details here if needed.
+    // }
+    public async Task GetCustomerByID(long userID)
+    {
+        UserID = userID;
+        try
+        {
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Customer/GetCustomerUserByUserID?userID={userID}";
+            var response = await httpClient.GetAsync(apiUrl);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<PagerResponse<UserDetail>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                customerList = result?.data ?? new List<UserDetail>();
+                // adminmodel.IsEdit = true;
+                //selectedProductIds = Model.CargoLists.Select(x => x.ProductId).ToList();
+                StateHasChanged();
+            }
+            else
+            {
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                toastService.ShowError(errorDetails);
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+            Console.WriteLine($"Error fetching supplier data: {ex.Message}");
+        }
+    }
+
+    public async Task AddCustomerLink()
+    {
+        if (UserID == 0 || CustomerID == 0)
+        {
+            return  ;
+        }
+        try
+        {
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Customer/AddCustomerLinks?userID={UserID}&customerID={CustomerID}";
+            var response = await httpClient.GetAsync(apiUrl);
+            if (response.IsSuccessStatusCode)
+            {
+                await GetCustomerByID(UserID);
+                toastService.ShowSuccess("Links has been created successfully.");
+
+                // adminmodel.IsEdit = true;
+                //selectedProductIds = Model.CargoLists.Select(x => x.ProductId).ToList();
+                StateHasChanged();
+            }
+            else
+            {
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                toastService.ShowError(errorDetails);
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+            Console.WriteLine($"Error fetching supplier data: {ex.Message}");
+        }
+
+    }
+
+}

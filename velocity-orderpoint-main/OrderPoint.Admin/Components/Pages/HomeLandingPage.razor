@@ -1,0 +1,337 @@
+﻿@page "/landingpage"
+@using OrderPoint.Admin.Services
+@using OrderPoint.Domain.Common
+@rendermode InteractiveServer
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject NavigationManager navigator
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@layout OrderPoint.Admin.Components.Layout.HomeLayout
+<title>Order Point</title>
+<style>
+    @@font-face {
+    font-family: 'Zodiak';
+    src: url('/Fonts/OTF/Zodiak-Regular.otf') format('opentype');
+    font-weight: 400;
+    font-style: normal;
+    }
+
+    @@font-face {
+    font-family: 'Zodiak';
+    src: url('/Fonts/OTF/Zodiak-Light.otf') format('opentype');
+    font-weight: 300;
+    font-style: normal;
+    }
+
+    @@font-face {
+    font-family: 'Zodiak';
+    src: url('/Fonts/OTF/Zodiak-Bold.otf') format('opentype');
+    font-weight: 700;
+    font-style: normal;
+    }
+
+    @@font-face {
+    font-family: 'Zodiak';
+    src: url('/Fonts/OTF/Zodiak-Italic.otf') format('opentype');
+    font-weight: 400;
+    font-style: italic;
+    }
+
+    /* Optional: Add more like Thin, Black, etc. */
+
+
+
+    .text-link {
+    font-size: 16px;
+    }
+
+    @@media (max-width: 1400px) {
+    .text-link {
+    font-size: 14px !important;
+    }
+
+    .social-div img {
+    width: 22px;
+    height: 22px;
+    }
+    }
+
+    @@media (max-width: 1300px) {
+    .text-link {
+    font-size: 11px !important;
+    }
+
+    .social-div img {
+    width: 22px;
+    height: 22px;
+    }
+    }
+
+    @@media (max-width: 1050px) {
+    .text-link {
+    font-size: 8px !important;
+    }
+
+    .top72 {
+    top: -60px !important;
+    }
+
+    .social-div {
+    padding: 6px 20px !important;
+    }
+
+    .content-body {
+    bottom: 105px !important;
+    left: 80px;
+    }
+
+    .social-div img {
+    width: 22px;
+    height: 22px;
+    }
+    }
+
+    @@media (min-width: 1700px) {
+    .text-link {
+    font-size: 17px !important;
+    }
+    }
+
+    @@media (min-width: 1900px) {
+    .text-link {
+    font-size: 19px !important;
+    }
+    }
+
+    @@media (max-width: 780px) {
+    .top72 {
+    top: 0 !important;
+    }
+
+    .display-none {
+    display: none;
+    }
+
+    .content-body {
+    bottom: 45px !important;
+    left: 45px;
+    }
+
+    .content-body h1 {
+    font-size: 40px;
+    }
+
+    .content-body p {
+    font-size: 14px;
+    }
+
+    .margin-minus {
+    margin-top: 30px;
+    }
+
+    .links-div a {
+    font-size: 13px;
+    }
+    }
+
+    @@media (min-width: 781px) {
+    .top72 {
+    top: -72px !important;
+    }
+
+    .display-none1 {
+    display: none;
+    }
+
+    .content-body {
+    bottom: 190px;
+    left: 80px;
+    }
+
+    .margin-minus {
+    margin-top: -30px;
+    }
+    }
+</style>
+<div class="flex flex-col min-h-screen bg-[#FFFBEF] text-white" style="font-family: 'Outfit', sans-serif; ">
+    <!-- Header -->
+    <header class="flex items-center justify-content-between px-6 py-4 lg:px-12 font-outfit">
+        <!-- Logo -->
+        <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-2">
+                <div class=" flex items-center justify-center" style="position: relative; top: 10px;">
+                    <img src="/images/Order Point.png" class="w-[100px] h-[67px]" alt="Alternate Text" />
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-4 position-relative links-div" style="z-index:9">
+            <!-- User Phone -->
+            <div class="flex items-center space-x-2 bg-[#F5F0E0] rounded-full px-4 py-2 social-div">
+                <span>
+                    <img src="/images/phoneIcon.png" class="img-fluid" alt="Alternate Text" />
+                </span>
+                <a href="tel:442012345678" class="font-outfit font-normal text-link leading-6 tracking-normal text-[#262626] hover:text-[#262626] text-decoration-none"> +44 20 1234 5678</a>
+            </div>
+
+            <!-- User Email -->
+            <div class="flex items-center space-x-2 bg-[#F5F0E0] rounded-full px-4 py-2 social-div">
+                <span>
+                    <img src="/images/emailicon.png" class="img-fluid" alt="Alternate Text" />
+                </span>
+                <a href="mailto:info@orderpoint.com" class="font-outfit font-normal text-link leading-6 tracking-normal text-[#262626] hover:text-[#262626] text-decoration-none">info@orderpoint.com</a>
+            </div>
+            <!-- User SignOut -->
+            @if(!string.IsNullOrEmpty(UserName)){
+                <div class="flex items-center space-x-2 bg-[#F5F0E0] rounded-full px-4 py-2 social-div">
+                    <span class="font-outfit font-normal text-link leading-6 tracking-normal text-[#262626]">@UserName</span>
+                    <span>
+                        <img src="/images/signOutIcon.png" class="img-fluid" alt="Alternate Text" />
+                    </span>
+                </div>
+            }
+
+        </div>
+
+    </header>
+
+
+
+    <!-- Hero Section -->
+    <main class="flex-grow lg:px-12 position-relative px-6">
+        @*this div render when user is not login*@
+        
+        
+        @if (!string.IsNullOrEmpty(UserName))
+        {
+            <div class="img-banner position-relative top72 display-none">
+            <img src="/images/Subtract.png" class="img-fluid w-100" alt="Alternate Text" />
+        </div>
+        }
+        else{
+            <div class="img-banner position-relative top72 display-none">
+                <img src="/images/home-img.png" class="img-fluid w-100" alt="Alternate Text" />
+            </div>
+        }
+        <div class="img-banner position-relative display-none1">
+            <img src="/images/home-banner-img.png" class="img-fluid w-100 rounded-3" alt="Alternate Text" />
+        </div>
+        <div class="max-w-4xl position-absolute content-body">
+            <h1 class="font-medium text-[60px] font-zodiak leading-[100%] tracking-normal text-[#FFFBEF] capitalize mb-4" style="font-family: 'Zodiak';">
+                Welcome to Our Store!
+            </h1>
+            <p class="font-[Outfit] font-light text-white text-[18px] leading-[26px] pb-3">
+                Here, You Can Easily And Quickly Place An Order For Our Products. Simply <br /> Choose The Items From Our
+                Catalog, Add Them To Your Cart, And Fill Out The <br /> Order Form. We'll Take Care Of The Rest!
+            </p>
+
+            <a href="/login" class="font-[Outfit] font-medium text-[18px] mt-3 leading-[26px] tracking-[0%] text-center text-decoration-none bg-[#FFFBEF] text-[#262626] hover:text-[#262626] rounded-full px-6 py-2">
+                Order Now
+            </a>
+        </div>
+    </main>
+
+    <!-- Process Steps -->
+    <section class="px-6 lg:px-12 mb-5 margin-minus" style="">
+        <div class="">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="align-items-center bg-[#F5F0E0] d-flex p-4 rounded-[12px]">
+                    <div class="me-4"><img src="/images/greenProduct.png" class="img-fluid" alt="box"></div>
+                    <div>
+                        <label class="text-[#262626] font-[Outfit] font-medium text-[18px] leading-[26px] text-center">
+                            Choose Products
+                        </label>
+                        <div>
+                            <span class="text-[#515151] font-[Outfit] font-light text-[16px] leading-[22px]">
+                                Browse our catalog and
+                                select your desired items
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="align-items-center bg-[#F5F0E0] d-flex p-4 rounded-[12px]">
+                    <div class="me-4"><img src="/images/greenCart.png" class="img-fluid" alt="box"></div>
+                    <div>
+                        <label class="text-[#262626] font-[Outfit] font-medium text-[18px] leading-[26px] text-center">
+                            Add to Cart
+                        </label>
+                        <div>
+                            <span class="text-[#515151] font-[Outfit] font-light text-[16px] leading-[22px]">
+                                Click "Add to Cart" for each item you wish to purchase
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="align-items-center bg-[#F5F0E0] d-flex p-4 rounded-[12px]">
+                    <div class="me-4"><img src="/images/greenCheckout.png" class="img-fluid" alt="box"></div>
+                    <div>
+                        <label class="text-[#262626] font-[Outfit] font-medium text-[18px] leading-[26px] text-center">
+                            Checkout
+                        </label>
+                        <div>
+                            <span class="text-[#515151] font-[Outfit] font-light text-[16px] leading-[22px]">
+                                Finalize order with contact details and delivery address.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="align-items-center bg-[#F5F0E0] d-flex p-4 rounded-[12px]">
+                    <div class="me-4"><img src="/images/greenDelievery.png" class="img-fluid" alt="box"></div>
+                    <div>
+                        <label class="text-[#262626] font-[Outfit] font-medium text-[18px] leading-[26px] text-center">
+                            Delivery
+                        </label>
+                        <div>
+                            <span class="text-[#515151] font-[Outfit] font-light text-[16px] leading-[22px]">
+                                Choose your delivery method and date and time.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+
+@code {
+    private string UserEmail;
+    private bool IsLoading = true;
+    private bool _hasRendered = false;
+    private string UserName;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_hasRendered)
+        {
+            _hasRendered = true;
+
+            // Safe to call JS interop/localStorage here
+            await AuthProvider.InitializeAsync();
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var isTokenValid = await AuthProvider.IsTokenValidAsync();
+            var user = authState.User;
+            if (isTokenValid)
+            {
+                UserName = user.FindFirst(ClaimTypesEx.Name)?.Value;
+            }
+
+            // UserEmail = await AuthProvider.GetClaimValue(ClaimTypesEx.Name).val;
+            // if (!string.IsNullOrEmpty(UserEmail))
+            // {
+            //     UserEmail = UserEmail.Split(',')[1];
+            // }
+            IsLoading = false;
+
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    private async Task Logout()
+    {
+        await _localStorage.RemoveItemAsync("authToken");
+        AuthProvider.NotifyUserLogout();
+        navigator.NavigateTo("/", true);
+    }
+}

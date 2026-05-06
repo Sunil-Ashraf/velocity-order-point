@@ -1,0 +1,227 @@
+﻿@using MudBlazor
+@using OrderPoint.Services
+@using OrderPoint.Helper
+@using OrderPoint.Domain.ViewModel
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject NavigationManager navigator
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IRoleService RoleService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+@inject IConfiguration _configuration
+@inject IHttpContextAccessor HttpContextAccessor
+@inject LogoutService LogoutService
+<MudThemeProvider @rendermode="InteractiveServer" />
+<MudPopoverProvider @rendermode="InteractiveServer" />
+
+@* Needed for dialogs *@
+<MudDialogProvider @rendermode="InteractiveServer" />
+
+@* Needed for snackbars *@
+<MudSnackbarProvider @rendermode="InteractiveServer" />
+<style>
+    #sidebar {
+    transition: transform 0.3s ease-in-out;
+    background: #f1f1f1;
+    }
+
+    .sidebar-closed {
+    transform: translateX(-100%);
+    }
+
+    .sidebar-open {
+    transform: translateX(0);
+    }
+
+    .active-link {
+    background-color: #4E4D4D !important;
+    color: white !important;
+    }
+
+    .active-link .nav-icon {
+    filter: brightness(0) invert(1);
+    }
+    .rounded-full.transition:not(.active-link):hover span {
+    color: #4E4D4D !important;
+    }
+</style>
+
+@if (_hasRendered && isWholesaler)
+{
+    <style>
+        .stickyDiv{
+        position:sticky;
+        }
+    </style>
+    <div class="position-relative">
+        <!-- Top navbar with toggle button (always visible) -->
+        <nav class="flex justify-between items-center p-3" style="position: absolute; left: 12px; top: 12px; z-index: 11;">
+            <button @onclick="ToggleSidebar" class="focus:outline-none">
+                <i class="fas fa-bars text-2xl"></i>
+            </button>
+
+        </nav>
+
+        @if (_isSidebarOpen)
+        {
+            <div class="fixed inset-0 bg-black bg-opacity-50 z-40" @onclick="CloseSidebar"></div>
+        }
+
+        <!-- Sidebar -->
+        <div id="sidebar"
+        class="fixed w-64 flex flex-col top-0 left-0 h-screen bg-white transition-transform z-50
+                    @( _isSidebarOpen ? "sidebar-open" : "sidebar-closed")">
+            <div class="p-2 flex-grow px-3" style="background: #f1f1f1;">
+
+                <!-- Logo + Close Button -->
+                <div class="flex justify-between items-center mb-3">
+                    @if (!string.IsNullOrEmpty(WholesaleLogo))
+                    {
+                        @*   <img class="w-[100px] ms-5  logoOrder" style="    height: 65px;
+    object-fit: contain;" src="@($"{_configuration["API_App_URL"]}/WholesalePictures/{WholesaleLogo}")"
+                             onerror="this.onerror=null;this.src='/images/Order Point.png';"
+                             alt="Alternate Text" /> *@
+
+                        <img src="@($"{_configuration["API_App_URL"]}/WholesalePictures/{WholesaleLogo}")" alt="Logo"
+                        class="w-[160px] h-[60px] object-contain ">
+                        <button class="text-gray-600 text-xl" @onclick="CloseSidebar">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    }
+
+                </div>
+
+                <!-- Navigation Menu -->
+                <!-- Navigation Menu -->
+                <nav class="mt-3">
+                    <ul class="space-y-2">
+                        <li>
+                            <NavLink href="/products"
+                            class="px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                            Match="NavLinkMatch.Prefix"
+                            activeClass="bg-[#4E4D4D] text-white active-link"
+                            @onclick="CloseSidebar">
+                                <span><i class="fa fa-users nav-icon"></i></span>
+                                <span class="text-md">Products</span>
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink href="/categories"
+                            class="px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                            Match="NavLinkMatch.Prefix"
+                            activeClass="bg-[#4E4D4D] text-white active-link"
+                            @onclick="CloseSidebar">
+                                <span><i class="fa-solid fa-user-tag nav-icon"></i></span>
+                                <span class="text-md">Categories</span>
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink href="/view-customer"
+                            class="px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                            Match="NavLinkMatch.Prefix"
+                            activeClass="bg-[#4E4D4D] text-white active-link"
+                            @onclick="CloseSidebar">
+                                <span><i class="fa-solid fa-users-gear nav-icon"></i></span>
+                                <span class="text-md">Customers</span>
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink href="/view-details"
+                            class="px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                            Match="NavLinkMatch.Prefix"
+                            activeClass="bg-[#4E4D4D] text-white active-link"
+                            @onclick="CloseSidebar">
+                                <span><i class="fa-regular fa-user nav-icon"></i></span>
+                                <span class="text-md">Details</span>
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink href="/product-listing"
+                            class="px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                            Match="NavLinkMatch.Prefix"
+                            activeClass="bg-[#4E4D4D] text-white active-link"
+                            @onclick="CloseSidebar">
+                                <span><i class="fa-solid fa-gear nav-icon"></i></span>
+                                <span class="text-md">Product Listing</span>
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink href="/Email/Templates"
+                            class="px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                            Match="NavLinkMatch.Prefix"
+                            activeClass="bg-[#4E4D4D] text-white active-link"
+                            @onclick="CloseSidebar">
+                                <span><i class="fa-solid fa-gear nav-icon"></i></span>
+                                <span class="text-md">Email Templates</span>
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink href="/Wholesaler/deliveryOptions"
+                            class="px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                            Match="NavLinkMatch.Prefix"
+                            activeClass="bg-[#4E4D4D] text-white active-link"
+                            @onclick="CloseSidebar">
+                                <span><i class="fa-solid fa-gear nav-icon"></i></span>
+                                <span class="text-md">Delivery Options</span>
+                            </NavLink>
+                        </li>
+                    </ul>
+                </nav>
+
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div></div>
+}
+
+@code {
+    private bool isWholesaler = false;
+    private bool isCustomer = false;
+    private string role;
+    private bool IsLoading = true;
+    private bool _hasRendered = false;
+
+    private bool _isSidebarOpen = false;
+    public string WholesaleLogo { get; set; }
+
+    private void ToggleSidebar()
+    {
+        _isSidebarOpen = !_isSidebarOpen;
+    }
+
+    private void CloseSidebar()
+    {
+        _isSidebarOpen = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_hasRendered)
+        {
+            _hasRendered = true;
+            await LogoutService.InitializeAsync();
+            await AuthProvider.InitializeAsync();
+            role = await AuthProvider.GetClaimValue(ClaimTypesEx.Role);
+
+            var context = HttpContextAccessor.HttpContext;
+            var wholesalerModel = context?.Session.GetObject<AddEditWholesalerModel>("Wholesaler");
+            if (wholesalerModel != null) { 
+            WholesaleLogo = wholesalerModel.ImagePath;
+        }//await _localStorage.GetItemAsync<string>("WholesalerLogo");
+        IsLoading = false;
+            if (role.Contains(Roles.Customer))
+            {
+                isCustomer = true;
+            }
+            if (role.Contains(Roles.Wholesaler))
+            {
+                isWholesaler = true;
+            }
+
+            StateHasChanged();
+        }
+    }
+}

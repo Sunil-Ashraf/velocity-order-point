@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
+		
+		<!--<PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />-->
+
+		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.3" />
+		<PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.7" />
+		
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\OrderPoint.Domain\OrderPoint.Domain.csproj" />
+		<ProjectReference Include="..\OrderPoint.Infrastructure\OrderPoint.Infrastructure.csproj" />
+	</ItemGroup>
+
+</Project>

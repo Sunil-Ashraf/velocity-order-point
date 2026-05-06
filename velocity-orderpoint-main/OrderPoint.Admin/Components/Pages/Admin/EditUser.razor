@@ -1,0 +1,218 @@
+﻿ @using Blazored.Toast.Services
+@using OrderPoint.Admin.Components.Common
+
+@using OrderPoint.Domain.Common
+@using OrderPoint.Domain.ViewModel
+@using Blazored.LocalStorage
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using System.Text
+@inject HttpClient httpClient
+@inject NavigationManager navigator
+@inject IToastService toastService
+ @rendermode InteractiveServer
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject IJSRuntime JSRuntime
+
+<div class="modal fade" id="EditUser_modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="viewCargoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <EditForm Model="Editusernmodel" OnValidSubmit="UpdateUser">
+            <DataAnnotationsValidator />
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-2xl font-semibold text-black" id="viewCargoModalLabel">Edit User</h5>
+                    <button type="button" class="text-gray-500 hover:text-gray-700" data-bs-dismiss="modal"><img src="./images/close.png"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <label class="block text-md text-[16px] text-black mb-1 ">User Type</label>
+                                <input type="text" disabled class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1 valid" name="name" value="@UserType" />
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <label class="block text-md text-[16px] text-black mb-1 ">Email</label>
+                                <label class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1 valid bg-[#fafafa]">@Editusernmodel.EmailAddress</label>
+
+
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <label class="block text-md text-[16px] text-black mb-1 ">First Name</label>
+                                <input type="text" class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1 valid" name="name" @bind-value="@Editusernmodel.FirstName" />
+
+                                <ValidationMessage For="@(()=>Editusernmodel.FirstName)" />
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <label class="block text-md text-[16px] text-black mb-1 ">Last Name</label>
+                                <input type="text" class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1 valid" name="name" @bind-value="@Editusernmodel.LastName" />
+                                <ValidationMessage For="@(()=>Editusernmodel.LastName)" />
+                            </div>
+                        </div>
+                      
+                        @if (WholesalerID > 0)
+                        {
+                            <div class="col-lg-12 align-self-center">
+                                <div class="mb-2 d-inline-block">
+                                    <label class="flex items-center gap-2">
+                                        <InputCheckbox @bind-Value="Editusernmodel.isBccEmail" class="transform scale-125 text-blue-500 accent-blue-500" />
+                                        BCC this wholesaler user when new orders are placed
+                                    </label>
+                                </div>
+                            </div>
+                       
+                        }
+                        <div class="col-lg-12">
+                            <div class="flex justify-content-between align-items-center ">
+                                <a href="javascript:;" @onclick="()=>DeleteUserLinks()" class="text-danger text-hover-danger">Delete user altogether (including links to wholesalers/customers)</a>
+                               
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" data-bs-dismiss="modal" class="rounded-full border border-[#4E4D4D] text-dark px-4 py-2 flex-grow md:flex-none text-[16px] text-center">Cancel</button>
+                    <button class="bg-[#4E4D4D] d rounded-full border-black text-white border px-4 py-2  hover:bg-[#4E4D4D] flex-grow md:flex-none text-[16px] text-center">Save</button>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+
+@code {
+    [Parameter]
+    public EventCallback OnUserUpdate { get; set; }
+    [Parameter]
+    public String CreateFor { get; set; }
+    [Parameter]
+    public String UserType { get; set; }  
+    [Parameter]
+    public String Name { get; set; }    
+    [Parameter]
+    public EditUseViewModel Editusernmodel { get; set; }
+    [Parameter]
+    public long WholesalerID { get; set; }
+    SignupViewModel adminmodel = new();
+   // EditUseViewModel Editusernmodel = new();
+    public async Task UpdateUser()
+    {
+
+        try
+        {
+
+
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Admin/Updateuser";
+            var resJson = JsonSerializer.Serialize(Editusernmodel);
+            var content = new StringContent(resJson, System.Text.Encoding.UTF8, "application/json");
+            var response = new HttpResponseMessage();// await httpClient.PostAsync($"{_configuration["API_App_URL"]}/api/Products/CreateProduct", content);
+            response = await httpClient.PutAsync(apiUrl, content);
+
+            if (response == null)
+            {
+                Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                toastService.ShowError("API Response is null. Possible network error or invalid URL. ");
+                return;
+            }
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<APIResponse>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (result.Success)
+                {
+                    await JSRuntime.InvokeVoidAsync("hideModal", "EditUser_modal");
+                    toastService.ShowSuccess("User has been updated successfully.");
+                    adminmodel = new SignupViewModel();
+                }
+                else
+                {
+                    toastService.ShowError(result.Message);
+                }
+                if (OnUserUpdate.HasDelegate)
+                {
+                    await OnUserUpdate.InvokeAsync();
+                }
+
+               
+              
+            }
+
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+
+        }
+        finally
+        {
+            // if (lstProducts.Count == 0)
+            // {
+            //     tableLabel = "No record found.";
+            // }
+            StateHasChanged();
+        }
+
+    }
+    public async Task DeleteUserLinks()
+    {
+        //var apiUrl = $"{_configuration["API_App_URL"]}/api/Admin/Removeuser?userID={userID}&isDeleleUserForCustomer={true}";
+        //var apiUrl = $"{_configuration["API_App_URL"]}/api/Admin/Removeuser?userID={userID}&isDeleleUserForWholesaler={true} ";
+
+        try
+        {
+            bool confirmed = await JSRuntime.InvokeAsync<bool>("ShowConfirmSwal", "Are you sure?", "Do you want to remove this user?", "warning");
+            if (confirmed)
+            {
+                
+
+                var apiUrl = $"{_configuration["API_App_URL"]}/api/Admin/Removeuser?userID={Editusernmodel.ID}";
+                var response = await httpClient.GetAsync(apiUrl);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var jsonString = await response.Content.ReadAsStringAsync();
+                    var result = JsonSerializer.Deserialize<Response<SignupViewModel>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (result.Success)
+                    {
+
+                        toastService.ShowSuccess("User has been Deleted successfully.");
+                        if (OnUserUpdate.HasDelegate)
+                        {
+                            await OnUserUpdate.InvokeAsync();
+                        }
+                    }
+                    else{
+                        toastService.ShowError(result.Message);
+                        if (OnUserUpdate.HasDelegate)
+                        {
+                            await OnUserUpdate.InvokeAsync();
+                        }
+                    }
+                    await JSRuntime.InvokeVoidAsync("hideModal", "EditUser_modal");
+                    StateHasChanged();
+                    //selectedProductIds = Model.CargoLists.Select(x => x.ProductId).ToList();
+
+                }
+                else
+                {
+                    string errorDetails = await response.Content.ReadAsStringAsync();
+                }
+               
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+            Console.WriteLine($"Error fetching supplier data: {ex.Message}");
+        }
+    }
+}

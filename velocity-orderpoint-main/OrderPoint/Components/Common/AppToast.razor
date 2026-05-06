@@ -1,0 +1,10 @@
+﻿@using Blazored.Toast
+@using Blazored.Toast.Services
+@inject IToastService toastService
+<BlazoredToasts Timeout="2" ShowProgressBar="true" PauseProgressOnHover="true">
+    <CloseButtonContent>
+        <div>
+            <span>&times;</span>
+        </div>
+    </CloseButtonContent>
+</BlazoredToasts>

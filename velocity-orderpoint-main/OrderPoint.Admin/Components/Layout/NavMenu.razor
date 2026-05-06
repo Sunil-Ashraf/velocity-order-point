@@ -1,0 +1,109 @@
+﻿<style>
+    #sidebar {
+        transition: transform 0.3s ease-in-out;
+        background: #f1f1f1;
+    }
+
+    .active-link {
+        background-color: #4E4D4D !important;
+        color: white !important;
+    }
+
+        .active-link .nav-icon {
+            filter: brightness(0) invert(1);
+        }
+
+    #profileDropdown {
+        display: none;
+        z-index: 50;
+        position: absolute;
+        right: 0;
+        margin-top: 0.5rem;
+        width: 200px;
+        background: #fff;
+        border: 1px solid #ccc;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+</style>
+
+<div class="h-screen bg-white">
+    <div class="relative z-0">
+        <nav class="flex justify-between items-center">
+            <button id="menu-toggle" class="p-3 focus:outline-none">
+                <i id="menu-icon" class="fas fa-bars text-2xl"></i>
+            </button>
+        </nav>
+
+        <div id="sidebar" class="absolute sm:absolute w-100 flex flex-col top-0 left-0 h-screen bg-white transition-transform z-50 md:translate-x-0">
+            <div class="p-2 flex-grow px-3" style="background: #f1f1f1;">
+                <!-- Logo -->
+                <div class="text-lg font-bold">
+                    <img src="./images/Order1.png" alt="Logo" class="mx-auto w-[200px] h-[70px] object-contain filter brightness-[0.5]">
+                </div>
+
+                <!-- Status or badge (optional) -->
+                <div class="mt-3 text-center">
+                    <span class="badge badge-success" style="background: #000000; font-size: 15px;"></span>
+                </div>
+
+                <!-- Navigation Menu -->
+                <nav class="mt-3">
+                    <ul class="space-y-2">
+                        <li>
+                            <NavLink href="/view-admin"
+                                     Match="NavLinkMatch.Prefix"
+                                     class="px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                                     activeClass="bg-[#4E4D4D] text-white active-link">
+                                <span><i class="fa fa-users nav-icon"></i></span>
+                                <span class="text-md">Admin Users</span>
+                            </NavLink>
+
+                        </li>
+                        <li>
+                            <NavLink href="/view-wholesaler"
+                                     class="text-dark px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                                     activeClass="bg-[#4E4D4D] text-white active-link">
+                                <span><i class="fa-solid fa-user-tag nav-icon"></i></span>
+                                <span class="text-md">Wholesalers</span>
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink href="/view-customer"
+                                     Match="NavLinkMatch.Prefix"
+                                     class="text-dark px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                                     activeClass="bg-[#4E4D4D] text-white active-link">
+                                <span><i class="fa-solid fa-users-gear nav-icon"></i></span>
+                                <span class="text-md">Customers</span>
+                            </NavLink>
+
+                        </li>
+                        <li>
+                            <NavLink href="/view-user"
+                                     class="text-dark px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                                     activeClass="bg-[#4E4D4D] text-white active-link">
+                                <span><i class="fa-regular fa-user nav-icon"></i></span>
+                                <span class="text-md">Users</span>
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink href="/email/templates"
+                                     class="text-black px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                                     activeClass="bg-[#4E4D4D] text-white active-link">
+                                <span><i class="fa fa-envelope nav-icon"></i></span>
+                                <span class="text-md">Email Templates</span>
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink href="/settings"
+                                     class="text-black px-2 py-2 w-full flex items-center space-x-2 rounded-full transition"
+                                     activeClass="bg-[#4E4D4D] text-white active-link">
+                                <span><i class="fa-solid fa-gear nav-icon"></i></span>
+                                <span class="text-md">Settings</span>
+                            </NavLink>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>

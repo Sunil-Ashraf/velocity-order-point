@@ -1,0 +1,193 @@
+﻿@page "/Message"
+@rendermode InteractiveServer
+@using Blazored.Toast.Services
+@using OrderPoint.Components.Common
+@using OrderPoint.Domain.Constant
+@using OrderPoint.Domain.ViewModel
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using OrderPoint.Helper
+@using OrderPoint.Services
+@inject NavigationManager navigator
+@inject HttpClient httpClient
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject IJSRuntime JSRuntime
+@inject IToastService toastService
+@inject CookieService CookieService
+@inject IJSRuntime JSRuntime
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject NotificationService NotificationService
+<PageTitle>Order Point | Products Management</PageTitle>
+
+<AppToast />
+<Auth setAuth="@setAuth" />
+<div class="min-h-screen mt-3">
+    <div class="min-h-screen mt-3">
+        <div class="text-center px-6">
+            <!-- Check Icon Circle -->
+            <div class="mx-auto mb-4 w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                <svg class="w-6 h-6 text-black" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+
+            <!-- Heading -->
+            <h1 class="text-lg font-semibold mb-1">Thank you for your order!</h1>
+
+            <!-- Subtext -->
+            <p class="text-sm text-gray-500 mb-6">
+                An email confirmation has been sent to <span class="fw-bold">@Editusernmodel.EmailAddress</span> with details of your order.
+            </p>
+
+            <!-- Button -->
+            
+        </div>
+        @if (model != null && model.OrderItems != null && model.OrderItems.Count() > 0)
+        {
+                    <div class="bg-[#F5F5F5] p-2 rounded-xl gap-4 items-start shadow-sm my-3 px-3" style=" width: 600px; margin: auto;">
+                        <div class="d-flex justify-between mb-1">
+                            <label class="block text-sm text-black mt-2 ">Order Date: <span class="fw-bold">@String.Format(AppLists.UkDateFormat, DateTime.Now)</span></label>
+                            <label class="block text-sm text-black mt-2 ">Required Date: <span class="fw-bold">@String.Format(AppLists.UkDateFormat, model.OrderDate)</span></label>
+                        </div>
+            @foreach (var item in model.OrderItems)
+            {
+
+                        <!-- Content -->
+                        <div class="flex-1 space-y-1 mb-1">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-semibold text-[#1A1A1A] text-base">@item.ProductName</p>
+
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-[#1A1A1A] text-base">@item.Quantity</p>
+
+                                </div>
+
+
+                            </div>
+
+                        </div>
+                        
+
+
+            }
+                    </div>
+        }
+
+    <div class="text-center mt-4 pt-2">
+        <a href="/product-listing" class="bg-[#4E4D4D] text-white px-4 py-2 rounded-full hover:bg-[#4E4D4D] flex-grow md:flex-none text-[16px] text-center">
+            BACK TO SHOP
+        </a>
+    </div>
+
+    </div>
+    
+    @*     Thank you. An email confirmation has been sent to akhtar.akhya@gmail.com with details of your order.
+    *@
+    
+</div>
+@code {
+
+    [Parameter]
+    public bool loader { get; set; } = false;
+    private bool isAuthenticated;
+
+    private DateTime SelectedDate { get; set; } = DateTime.Today;
+    private string Userrole;
+    private Int64? CategoryID { get; set; }
+    private Dictionary<string, object> InputAttributes = new()
+    {
+        { "min", DateTime.Today.ToString("yyyy-MM-dd") }
+    };
+    private System.Timers.Timer _debounceTimer;
+    private string loading { get; set; } = "Loading...";
+    private List<ProductsViewModel> lstCategoryList = new();
+    private List<ProductsViewModel> cartList = new List<ProductsViewModel>();
+    private string CommentText { get; set; } = "";
+    private Int32 SelectedQty { get; set; }
+    private Int64 SelectedProductID { get; set; }
+    private string ReferenceNumber { get; set; } 
+    private string GeneralNotes { get; set; }
+    OrderPlacementModel model = new OrderPlacementModel();
+    EditUseViewModel Editusernmodel = new();
+
+
+    private void setAuth(bool val)
+    {
+        if (val)
+        {
+            isAuthenticated = val;
+            StateHasChanged();
+        }
+        else
+        {
+            navigator.NavigateTo("/login", true);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            loader = true;
+            model = NotificationService.CurrentOrder;
+            NotificationService.CurrentOrder = model;
+
+            
+            string token = await _localStorage.GetItemAsync<string>("authToken");
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                GetUserByID();
+                StateHasChanged();
+           
+                
+            }
+            else
+            {
+                navigator.NavigateTo("/login");
+            }
+
+        }
+
+
+    }
+  
+ 
+    public async Task GetUserByID()
+    {
+
+        try
+        {
+            var id = await _localStorage.GetItemAsync<string>("LoginUserID");
+            long.TryParse(id, out long parsedID);
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Admin/GetAdminByID?userID={id}";
+            var response = await httpClient.GetAsync(apiUrl);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<Response<EditUseViewModel>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                Editusernmodel = result?.Data ?? new EditUseViewModel();
+                // adminmodel.IsEdit = true;
+                //await JSRuntime.InvokeVoidAsync("showModal", "EditUser_modal");
+                //selectedProductIds = Model.CargoLists.Select(x => x.ProductId).ToList();
+                StateHasChanged();
+            }
+            else
+            {
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                toastService.ShowError(errorDetails);
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+            Console.WriteLine($"Error fetching supplier data: {ex.Message}");
+        }
+    }
+
+}

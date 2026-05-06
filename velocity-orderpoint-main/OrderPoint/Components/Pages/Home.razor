@@ -1,0 +1,15 @@
+﻿ @page "/home"
+@inject NavigationManager navigator
+
+@code {
+ 
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender )
+        {
+            
+            navigator.NavigateTo("/login", true); // true = force redirect (replace history)
+        }
+    }
+}

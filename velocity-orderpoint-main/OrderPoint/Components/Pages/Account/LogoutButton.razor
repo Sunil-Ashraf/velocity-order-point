@@ -1,0 +1,52 @@
+﻿@using OrderPoint.Services
+@rendermode InteractiveServer
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject NavigationManager navigator
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+
+@if (IsLoading)
+{
+ @*    <p class="text-sm text-gray-500">Loading user info...</p> *@
+}
+else if (!string.IsNullOrEmpty(UserEmail))
+{
+    <div class="border border-2 border-[#000000] flex items-center overflow-hidden rounded-full">
+        <span class="px-4 py-2 text-sm text-gray-800" style="width: 180px; white-space: nowrap; overflow: hidden;   text-overflow: ellipsis;" title="@UserEmail">@UserEmail</span>
+
+        <div class="h-6 w-px bg-gray-300 mx-1"></div>
+
+        <button type="button" class="px-3 py-2 text-gray-700 hover:text-black" @onclick="Logout">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+        </button>   
+    </div>
+}
+
+@code {
+    private string UserEmail;
+    private bool IsLoading = true;
+    private bool _hasRendered = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_hasRendered)
+        {
+            _hasRendered = true;
+
+            // Safe to call JS interop/localStorage here
+            await AuthProvider.InitializeAsync();
+            UserEmail = await AuthProvider.GetClaimValue(ClaimTypesEx.Name);
+            string wh=  await AuthProvider.GetClaimValue("WholesalerName");
+            IsLoading = false;
+
+            // Trigger re-render
+            StateHasChanged();
+        }
+    }
+
+    private async Task Logout()
+    {
+        await _localStorage.RemoveItemAsync("authToken");
+        AuthProvider.NotifyUserLogout();
+        navigator.NavigateTo("/login", true);
+    }
+}

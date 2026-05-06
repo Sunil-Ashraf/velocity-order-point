@@ -1,0 +1,447 @@
+﻿@page "/Wholesaler/deliveryOptions"
+<PageTitle>Delivery Options Wholesaler</PageTitle>
+ @rendermode InteractiveServer
+@using Blazored.Toast.Services
+@using MudBlazor
+@using OrderPoint.Components.Common
+@using OrderPoint.Domain.ViewModel
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using OrderPoint.Helper
+@using OrderPoint.Services
+@inject NavigationManager navigator
+@inject HttpClient httpClient
+@inject JwtAuthenticationStateProvider AuthProvider
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject IJSRuntime JSRuntime
+@inject IToastService toastService
+@inject CookieService CookieService
+@inject IJSRuntime JSRuntime
+<PageTitle>Order Point | Delivery Options Wholesaler</PageTitle>
+<Loader visible=loader />
+<AppToast />
+<Auth setAuth="@setAuth" />
+ 
+    <div class="min-h-screen mt-3">
+<EditForm Model="deliveryModel" OnValidSubmit="SaveOption">
+        <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+            <div class="text-2xl font-semibold text-black">
+                Delivery Schedule
+            </div>
+            <button type="submit" class="bg-[#4E4D4D] text-white px-4 py-2 rounded-full hover:bg-[#4E4D4D] flex-grow md:flex-none text-[16px] text-center">
+                Update
+            </button>
+            <table class="table-auto  w-full    text-left text-sm ">
+                <thead class="text-sm font-medium    text-black bg-[#F7F7F7] ">
+                    <tr>
+                        <th class="px-4 py-2">Week Day</th>
+                        <th class="px-4 py-2"> Start Time</th>
+                        <th class="px-4 py-2"> End Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+
+                    <tr>
+
+                        <td class="px-4 py-2">Monday</td>
+                        <td class="px-4 py-2">
+
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.MondayStartTime"
+                                           AmPm="false"
+                                           TimeChanged="@(time => ValidateDayTime("Monday","Start",time) )" />
+
+                        </td>
+                        <td class="px-4 py-2">
+
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.MondayEndTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Monday","End",time) )" />
+
+                        </td>
+
+                    </tr>
+                    <tr>
+
+                        <td class="px-4 py-2">Tuesday</td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.TuesdayStartTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Tuesday","Start",time) )" />
+                        </td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.TuesdayEndTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Tuesday","End",time) )" />
+                        </td>
+
+                    </tr>
+                    <tr>
+
+                        <td class="px-4 py-2">Wednesday</td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.WednesdayStartTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Wednesday" ,"Start",time) )" />
+                        </td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.WednesdayEndTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Wednesday","End",time) )" />
+                        </td>
+
+                    </tr>
+                    <tr>
+
+                        <td class="px-4 py-2">Thursday</td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.ThursdayStartTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Thursday","Start",time) )" />
+                        </td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.ThursdayEndTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Thursday","End",time) )" />
+                        </td>
+
+                    </tr>
+                    <tr>
+
+                        <td class="px-4 py-2">Friday</td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.FridayStartTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Friday","Start",time) )" />
+                        </td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.FridayEndTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Friday","End",time) )" />
+                        </td>
+
+                    </tr>
+                    <tr>
+
+                        <td class="px-4 py-2">Saturday</td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.SaturdayStartTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Saturday","Start",time) )" />
+                        </td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.SaturdayEndTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Saturday","End",time) )" />
+                        </td>
+
+                    </tr>
+                    <tr>
+
+                        <td class="px-4 py-2">Sunday</td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.SundayStartTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Sunday","Start",time) )" />
+                        </td>
+                        <td class="px-4 py-2">
+                            <MudTimePicker Label=""
+                                           Time="deliveryModel.SundayEndTime"
+                                           AmPm="false" TimeChanged="@(time => ValidateDayTime("Sunday","End",time) )" />
+                        </td>
+
+                    </tr>
+
+                     
+                </tbody>
+            </table>
+
+
+        </div>
+
+
+        <div class="overflow-x-auto rounded-[0.9rem] border ">
+
+         </div>
+
+  </EditForm>
+</div>
+@code {
+
+    public long WholesalerID { get; set; }
+    public TimeSpan OrderTime { get; set; }
+    private bool isAuthenticated;
+    private DeliveryOptionVM deliveryModel = new ();
+   
+    public bool loader { get; set; } = false;
+    private void setAuth(bool val)
+    {
+        if (val)
+        {
+            isAuthenticated = val;
+            StateHasChanged();
+        }
+        else
+        {
+            navigator.NavigateTo("/", true);
+        }
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            string token = await _localStorage.GetItemAsync<string>("authToken");
+            if (!string.IsNullOrEmpty(token))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                await AuthProvider.InitializeAsync();
+                await GetDeliverySchedule();
+            }
+            else
+            {
+                navigator.NavigateTo("/");
+            }
+
+        }
+    }
+    
+    private async Task SaveOption()
+    {
+        try
+        {
+
+            deliveryModel.WholesalerID = Convert.ToInt64(WholesalerID);
+         
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Wholesaler/SetWholesalerDelveryTime";
+            var resJson = JsonSerializer.Serialize(deliveryModel);
+            var content = new StringContent(resJson, System.Text.Encoding.UTF8, "application/json");
+            var response = new HttpResponseMessage();// await httpClient.PostAsync($"{_configuration["API_App_URL"]}/api/Products/CreateProduct", content);
+            response = await httpClient.PostAsync(apiUrl, content);
+
+            if (response == null)
+            {
+                Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                toastService.ShowError("API Response is null. Possible network error or invalid URL. ");
+                return;
+            }
+            if (response.IsSuccessStatusCode)
+            {
+                  toastService.ShowSuccess("Schedule has been saved successfully.");
+            }
+
+        }
+        catch (Exception ex)
+        {
+          //  toastService.ShowError($"Error updating profile: {ex.Message}");
+        }
+    }
+    public async Task GetDeliverySchedule()
+     {
+
+        try
+        {
+            string wID = await AuthProvider.GetClaimValue("WholesalerID");
+        
+            if (!String.IsNullOrEmpty(wID))
+                WholesalerID = long.Parse(wID);
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Wholesaler/GetDeliveryScheduleByWholesaler?wholesalerID={WholesalerID}";
+            var response = await httpClient.GetAsync(apiUrl);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<Response<DeliveryOptionVM>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                deliveryModel = result?.Data ?? new DeliveryOptionVM();
+                // adminmodel.IsEdit = true;
+                //await JSRuntime.InvokeVoidAsync("showModal", "EditUser_modal");
+                //await JSRuntime.InvokeVoidAsync("hideModal", "ViewUerModal");
+                //selectedProductIds = Model.CargoLists.Select(x => x.ProductId).ToList();
+                StateHasChanged();
+            }
+            else
+            {
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                toastService.ShowError(errorDetails);
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+            Console.WriteLine($"Error fetching supplier data: {ex.Message}");
+        }
+    }
+    private void ValidateDayTime(string day, string type, TimeSpan? newTime)
+    {
+        switch (day)
+        {
+            case "Monday":
+                if (type == "Start")
+                {
+                    deliveryModel.MondayStartTime = newTime;
+                    if (ValidateTime(day, deliveryModel.MondayStartTime, deliveryModel.MondayEndTime, type) == false)
+                    {
+                        deliveryModel.MondayStartTime = null;
+                    }
+                }
+                else
+                {
+                    deliveryModel.MondayEndTime = newTime;
+                    if (ValidateTime(day, deliveryModel.MondayStartTime, deliveryModel.MondayEndTime, type) == false)
+                    {
+                        deliveryModel.MondayEndTime = null;
+                    }
+                }
+                break;
+
+            case "Tuesday":
+                if (type == "Start")
+                {
+                    deliveryModel.TuesdayStartTime = newTime;
+                    if (ValidateTime(day, deliveryModel.TuesdayStartTime, deliveryModel.TuesdayEndTime, type) == false)
+                    {
+                        deliveryModel.TuesdayStartTime = null;
+                    }
+                }
+                else
+                {
+                    deliveryModel.TuesdayEndTime = newTime;
+                    if (ValidateTime(day, deliveryModel.TuesdayStartTime, deliveryModel.TuesdayEndTime, type) == false)
+                    {
+                        deliveryModel.TuesdayEndTime = null;
+                    }
+                }
+
+                break;
+
+            case "Wednesday":
+                if (type == "Start")
+                {
+                    deliveryModel.WednesdayStartTime = newTime;
+                    if (ValidateTime(day, deliveryModel.WednesdayStartTime, deliveryModel.WednesdayEndTime, type) == false)
+                    {
+                        deliveryModel.WednesdayStartTime = null;
+                    }
+                }
+                else
+                {
+                    deliveryModel.WednesdayEndTime = newTime;
+                    if (ValidateTime(day, deliveryModel.WednesdayStartTime, deliveryModel.WednesdayEndTime, type) == false)
+                    {
+                        deliveryModel.WednesdayEndTime = null;
+                    }
+                }
+                break;
+
+            case "Thursday":
+                if (type == "Start")
+                {
+                    deliveryModel.ThursdayStartTime = newTime;
+                    if (ValidateTime(day, deliveryModel.ThursdayStartTime, deliveryModel.ThursdayEndTime, type) == false)
+                    {
+                        deliveryModel.ThursdayStartTime = null;
+                    }
+                }
+                else
+                {
+                    deliveryModel.ThursdayEndTime = newTime;
+                    if (ValidateTime(day, deliveryModel.TuesdayStartTime, deliveryModel.ThursdayEndTime, type) == false)
+                    {
+                        deliveryModel.ThursdayEndTime = null;
+                    }
+                }
+                break;
+
+            case "Friday":
+                if (type == "Start")
+                {
+                    deliveryModel.FridayStartTime = newTime;
+                    if (ValidateTime(day, deliveryModel.FridayStartTime, deliveryModel.FridayEndTime, type) == false)
+                    {
+                        deliveryModel.FridayStartTime = null;
+                    }
+                }
+                else
+                {
+                    deliveryModel.FridayEndTime = newTime;
+                    if (ValidateTime(day, deliveryModel.FridayStartTime, deliveryModel.FridayEndTime, type) == false)
+                    {
+                        deliveryModel.FridayEndTime = null;
+                    }
+                }
+
+                break;
+
+            case "Saturday":
+                if (type == "Start")
+                {
+                    deliveryModel.SaturdayStartTime = newTime;
+                    if (ValidateTime(day, deliveryModel.SaturdayStartTime, deliveryModel.SaturdayEndTime, type) == false)
+                    {
+                        deliveryModel.SaturdayStartTime = null;
+                    }
+                }
+                else
+                {
+                    deliveryModel.SaturdayEndTime = newTime;
+                    if (ValidateTime(day, deliveryModel.SaturdayStartTime, deliveryModel.SaturdayEndTime, type) == false)
+                    {
+                        deliveryModel.SaturdayEndTime = null;
+                    }
+                }
+                break;
+
+            case "Sunday":
+                if (type == "Start")
+                {
+                    deliveryModel.SundayStartTime = newTime;
+                    if (ValidateTime(day, deliveryModel.SundayStartTime, deliveryModel.SundayEndTime, type) == false)
+                    {
+                        deliveryModel.SundayStartTime = null;
+                    }
+                }
+                else
+                {
+                    deliveryModel.SundayEndTime = newTime;
+                    if (ValidateTime(day, deliveryModel.SundayStartTime, deliveryModel.SundayEndTime, type) == false)
+                    {
+                        deliveryModel.SundayEndTime = null;
+                    }
+                }
+                break;
+        }
+    }
+
+    private bool ValidateTime(string day, TimeSpan? start, TimeSpan? end, string type)
+    {
+        if (start.HasValue && end.HasValue)
+        {
+            //  End time check
+            if (end <= start)
+            {
+                if (type == "Start")
+                {
+                    toastService.ShowError($"{day}: Start time must be less than end time.");
+                }
+                else{
+                    toastService.ShowError($"{day}: End time must be greater than start time.");
+                }
+           
+                return false;
+            }
+
+            //  Start time check
+            if (start >= end)
+            {
+                toastService.ShowError($"{day}: Start time must be less than end time.");
+                return false;
+            }
+            return true;
+        }
+        else
+        {
+            return true;
+        }
+    }
+}

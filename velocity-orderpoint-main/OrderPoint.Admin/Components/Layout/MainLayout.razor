@@ -1,0 +1,56 @@
+﻿@inherits LayoutComponentBase
+@using MudBlazor
+@using OrderPoint.Admin.Components.Layout
+<MudThemeProvider @rendermode="InteractiveServer" />
+<MudPopoverProvider @rendermode="InteractiveServer" />
+
+@* Needed for dialogs *@
+<MudDialogProvider @rendermode="InteractiveServer" />
+
+@* Needed for snackbars *@
+<MudSnackbarProvider @rendermode="InteractiveServer" />
+<div class="page flex">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <!-- Main Content Section -->
+    <main class="flex-1 relative overflow-y-auto h-screen">
+        <!-- Sticky Email Header -->
+        <div class="sticky top-0 bg-white z-10">
+            <div class="flex justify-end p-4 pb-0 pr-6">
+               <LogoutButton />  
+               @*  <div class="border border-2 border-[#000000] flex items-center overflow-hidden rounded-full">
+                    <!-- Email Text -->
+                    <span class="px-4 py-2 text-sm text-gray-800">jane.smith@gmail.com</span>
+
+                    <!-- Divider -->
+                    <div class="h-6 w-px bg-gray-300 mx-1"></div>
+
+                    <!-- Send Icon Button -->
+                    <button class="px-3 py-2 text-gray-700 hover:text-black">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    </button>
+                </div> *@
+            </div>
+        </div>
+      
+   
+
+        <!-- Scrollable Content -->
+        <div class="px-4 pb-8">
+            <article class="content" style="padding-left: 0px !important; padding-right: 0px !important;">
+                @Body
+            </article>
+        </div>
+    </main>
+</div>
+ 
+<!-- Error UI -->
+<div id="blazor-error-ui" class="hidden">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+   

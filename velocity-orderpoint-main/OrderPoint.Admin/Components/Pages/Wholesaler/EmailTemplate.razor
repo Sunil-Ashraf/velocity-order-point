@@ -1,0 +1,760 @@
+﻿@page "/view-wholesaler/EmailTemplates/{WholesalerID:long}"
+@using Blazored.Toast.Services
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using OrderPoint.Admin.Components.Pages.Admin
+@using OrderPoint.Admin.Components.Common
+@using OrderPoint.Domain.Common
+@using OrderPoint.Domain.ViewModel
+@using Blazored.LocalStorage
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using System.Text
+@inject HttpClient httpClient
+@inject NavigationManager navigator
+@inject IToastService toastService
+@rendermode InteractiveServer
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject IJSRuntime JSRuntime
+
+<AppToast />
+<PageTitle>Order Point | Email Templates</PageTitle>
+<Loader visible=loader />
+<AppToast />
+<Auth setAuth="@setAuth" />
+
+
+<div class="max-w-full mx-4   mt-3  ">
+ 
+    <div class="flex flex-wrap gap-3 justify-between w-full md:w-auto ">
+        <div class="text-2xl font-semibold text-black  ">
+            Email Template
+        </div>
+        <!-- Filters & Search -->
+        <div class="flex flex-wrap gap-2 mb-6 items-center">
+            <div class="position-relative">
+                <input type="search" placeholder="Search" class="w-full px-6 py-2 rounded-full  focus:outline-none" @bind="search" @oninput="OnSearchChanged" />
+                @if (string.IsNullOrWhiteSpace(search))
+                {
+                    <span class="position-absolute top-[8px] right-[13px] text-[#ffffff]">
+                        <i class="fa fa-search"></i>
+                    </span>
+                }
+            </div>
+
+            <button @onclick="() => OpenAddModal()" class="bg-[#4E4D4D] text-white px-4 py-2 rounded-full hover:bg-[#4E4D4D] flex-grow md:flex-none text-[16px] text-center">
+                <i class="fa fa-plus pe-1"></i>Add Template
+            </button>
+        </div>
+    </div>
+    <!-- Users Table --> 
+    <div class="overflow-x-auto rounded-[0.9rem] border ">
+        <table class="table-auto  w-full    text-left text-sm ">
+            <thead class="text-sm font-medium    text-black bg-[#F7F7F7]">
+                <tr>
+
+                    <th class="px-4 py-2" @onclick="() => SortTable(nameof(EmailTemplateViewModel.Name))">
+                        <button class="flex items-center space-x-1">
+                            <span class="text-nowrap flex items-center ">
+                                Name
+                            </span>
+                            <i class="bi bi-arrow-up" style=" font-size: 11px !important; width: 3px !important;"></i>
+                            <i class="bi bi-arrow-down" style=" font-size: 11px !important; width: 3px !important;"></i>
+                        </button>
+                    </th>
+                    <th class="px-4 py-2" @onclick="() => SortTable(nameof(EmailTemplateViewModel.Subject))">
+                        <button class="flex items-center space-x-1">
+                            <span class="text-nowrap flex items-center ">
+                                Subject
+                            </span>
+                            <i class="bi bi-arrow-up" style=" font-size: 11px !important; width: 3px !important;"></i>
+                            <i class="bi bi-arrow-down" style=" font-size: 11px !important; width: 3px !important;"></i>
+                        </button>
+                    </th>
+                    <th class="px-4 py-2" @onclick="() => SortTable(nameof(EmailTemplateViewModel.EmailType))">
+                        <button class="flex items-center space-x-1">
+                            <span class="text-nowrap flex items-center ">
+                                Email Type
+                            </span>
+                            <i class="bi bi-arrow-up" style=" font-size: 11px !important; width: 3px !important;"></i>
+                            <i class="bi bi-arrow-down" style=" font-size: 11px !important; width: 3px !important;"></i>
+                        </button>
+                    </th>
+                    <th class="px-4 py-2" @onclick="() => SortTable(nameof(EmailTemplateViewModel.IsDefault))">
+                        <button class="flex items-center space-x-1">
+                            <span class="text-nowrap flex items-center ">
+                                Default
+                            </span>
+                            <i class="bi bi-arrow-up" style=" font-size: 11px !important; width: 3px !important;"></i>
+                            <i class="bi bi-arrow-down" style=" font-size: 11px !important; width: 3px !important;"></i>
+                        </button>
+                    </th>
+                    <th class="px-4 py-2 text-center">
+                        <span class="text-nowrap flex items-center justify-center">
+                            Actions
+                        </span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white rounded-lg shadow p-4 mb-6 text-sm font-normal text-black">
+                @if (lstModel.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center">@tableLabel</td></tr>
+                }
+                else
+                {
+                    @foreach (var item in lstModel)
+                    {
+                        <tr class="">
+                            <td class="px-4 py-2 text-nowrap">@item.Name</td>
+                            <td class="px-4 py-2 text-nowrap">@item.Subject</td>
+                            <td class="px-4 py-2 text-nowrap">@item.EmailType</td>
+                            <td class="px-4 py-2 text-nowrap">
+                                @* <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">@(item.IsDefault ? "Yes" : "No")</span> *@
+                                @if (item.IsDefault)
+                                {
+                                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">Yes</span>
+                                }
+                                else if (!item.IsDefault)
+                                {
+                                    <span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm">No</span>
+                                }
+                            </td>
+                            <td class="px-4 py-2  ">
+                                <div class="flex items-center justify-center">
+                                    <!-- Edit -->
+                                    <MudTooltip Text="Edit" Placement="Placement.Top">
+                                        <button type="button" class="text-black hover:text-blue-800 me-2" @onclick="() => OpenEditModal(item)">
+                                            @*data-bs-toggle="modal" data-bs-target="#editModal"*@
+                                            <span><i class="fa fa-pencil"></i></span>
+                                        </button>
+                                    </MudTooltip>
+
+                                    <!-- Delete Email -->
+                                    @if (!item.IsDefault)
+                                    {
+                                        <MudTooltip Text="Delete" Placement="Placement.Top">
+                                            <button type="button" class="text-black hover:text-orange-800 me-2" @onclick="() => OpenDeleteConfirmationModal(item.Id, item.Name)">
+                                                @*data-bs-toggle="modal" data-bs-target="#unfreezeModal"*@
+                                                <i class="fa fa-trash-alt text-sm"></i>
+                                            </button>
+                                        </MudTooltip>
+                                    }
+                                      @if (!item.IsDefault)
+                                    {
+                                        <!-- Default Template -->
+                                        <MudTooltip Text="Set Default Template" Placement="Placement.Top">
+                                            <button type="button" class="text-black hover:text-orange-800" @onclick="() => OpenSetDefaultConfirmationModal(item.Id, item.Name)">
+                                                <i class="fa-solid fa-clipboard-check text-sm"></i>
+                                            </button>
+                                        </MudTooltip>
+                                    }
+                                </div>
+                            </td>
+
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex justify-center items-center  mt-4">
+        <!-- Previous Button -->
+        <button @onclick="PreviousPage" disabled="@(pageNumber == 1)"
+        class="px-2 py-[0.7rem] border rounded-md bg-white text-myblueGray hover:bg-gray-200 disabled:opacity-50">
+            <img src="./images/back.png" alt="Previous" />
+        </button>
+
+        <!-- Page Numbers -->
+        @for (int i = 1; i <= totalPages; i++)
+        {
+            int currentPage = i; // Create a local copy of i
+
+            if (currentPage == 1 || currentPage == 2 || currentPage == totalPages - 1 || currentPage == totalPages)
+            {
+                <!-- Always show first two and last two pages -->
+                <button @onclick="() => ChangePage(currentPage)"
+                class="px-3 py-1 border rounded-md bg-white hover:bg-gray-200 @(pageNumber == currentPage ? "bg-gray-100 font-bold" : "")">
+                    @currentPage
+                </button>
+            }
+            else if (currentPage >= pageNumber - 1 && currentPage <= pageNumber + 1)
+            {
+                <button @onclick="() => ChangePage(currentPage)"
+                class="px-3 py-1 border rounded-md bg-white hover:bg-gray-200 @(pageNumber == currentPage ? "bg-gray-100 font-bold" : "")">
+                    @currentPage
+                </button>
+            }
+            else if ((currentPage == 3 && pageNumber > 4) || (currentPage == totalPages - 2 && pageNumber < totalPages - 3))
+            {
+                <span class="px-3 py-1 bg-white">...</span>
+            }
+        }
+
+        <!-- Next Button -->
+        <button @onclick="NextPage" disabled="@(pageNumber == totalPages)"
+        class="px-2 py-[0.7rem] border rounded-md bg-white hover:bg-gray-200 disabled:opacity-50">
+            <img src="./images/next.png" alt="Next" />
+        </button>
+    </div>
+
+    <!-- User Details & Edit Form Modal -->
+    <div class="modal fade" id="addEditModal" tabindex="-1" aria-labelledby="addEditModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content" style="border: none; border-radius: 1rem;">
+                <EditForm Model="templateModel" OnValidSubmit="SaveTemplate" FormName="AddEditTemplate" class="space-y-6">
+                    <div class="modal-body px-4">
+
+                        <div>
+                            <h2 class="text-2xl font-semibold mb-6">Email Template</h2>
+                            <DataAnnotationsValidator />
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block mb-1">Template Name</label>
+                                    <input class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1" @bind="templateModel.Name" />
+                                    <ValidationMessage For=@(()=>templateModel.Name) class="text-danger" />
+                                </div>
+                                <div class="">
+                                    @*<div class="">*@
+                                    <label class="block mb-1">Email Type</label>
+                                    <InputSelect class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1" @bind-Value="templateModel.EmailTypeId">
+                                        <option value="" class="text-sm font-normal text-black">Please Select</option>
+                                        @foreach (var item in lstEmailType)
+                                        {
+                                            <option value="@Guid.Parse(item.Value)">@item.Text</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For=@(()=>templateModel.EmailTypeId) class="text-danger" />
+                                    @*</div>
+                                         <div class="flex items-center ms-3 mt-4 space-x-2">
+                                            <InputCheckbox @bind-Value="templateModel.IsDefault" class="border rounded w-5 h-5 bg-white text-black" />
+                                            <label class="font-medium text-gray-700 text-nowrap text-sm">Default Template</label>
+                                        </div> *@
+                                </div>
+
+
+                            </div>
+                            <div class="mt-3">
+                                <label class="block mb-1">Subject</label>
+                                <input class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1" @bind="templateModel.Subject" />
+                                <ValidationMessage For=@(()=>templateModel.Subject) class="text-danger" />
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-sm-3">
+                                    <div class="mb-3">
+                                        <label class="block fw-bold mb-1 text-lg">Placeholder</label>
+                                        @foreach (var item in lstPlaceholder)
+                                        {
+                                            <button type="button" @onclick="() => InsertPlaceholder(item.Text)" class="btn btn-light d-block mb-3">@item.Text</button>
+                                        }
+                                    </div>
+
+                                </div>
+                                <div class="col-sm-9">
+                                    <label class="block mb-1">Content</label>
+                                    <div>
+                                        @*  <InputTextArea @bind-Value="templateModel.Body"></InputTextArea> *@
+                                        <TinyMCE.Blazor.Editor Init="@(new {plugins = "link", toolbar = "undo redo | bold italic underline | link", menubar = false})" @bind-Value=templateModel.Body Field="@(() => templateModel.Body)" />
+                                        <ValidationMessage For=@(()=>templateModel.Body) class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+
+
+                        </div>
+                    </div>
+                    <div class="modal-footer mt-0 border-0">
+                        <button type="button" class="rounded-full border border-[#4E4D4D] text-dark px-4 py-2 flex-grow md:flex-none text-[16px] text-center" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="bg-[#4E4D4D] text-white px-4 py-2 rounded-full hover:bg-[#4E4D4D] flex-grow md:flex-none text-[16px] text-center">Save Changes</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmation Reset Password -->
+    <div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Delete Template</h3>
+                    <p class="mb-6 text-gray-700">
+                        Are you sure you want to delete <strong>@templateModel.Name</strong>?
+                    </p>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100" data-bs-dismiss="modal">
+                            Cancel
+                        </button>
+                        <button @onclick="DeleteTemplate" class="bg-black text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                            Confirm
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Default Template -->
+    <div class="modal fade" id="setDefaultConfirmationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Set as Default Template</h3>
+                    <p class="mb-6 text-gray-700">
+                        Are you sure you want to set <strong>@templateModel.Name</strong> as the default? This action will unset the default status for other template(s) of this type.
+                    </p>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100" data-bs-dismiss="modal">
+                            Cancel
+                        </button>
+                        <button @onclick="SetAsDefaultTemplate" class="bg-black text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                            Confirm
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [Parameter]
+    public bool loader { get; set; } = false;
+    [Parameter]
+    public long WholesalerID { get; set; }
+    private bool isAuthenticated;
+    private int pageSize = 15;
+    private int pageNumber = 1;
+    private int totalPages = 1;
+    private string sortColumn = "CreationTime";
+    private string sortOrder = "desc";
+    private string search = string.Empty;
+    private string status = string.Empty;
+    private bool isAscending = true;
+    private const string impersonateModal = "impersonateModal";
+    private const string forceToResetPasswordModal = "forceToResetPasswordModal";
+    private const string freezeModal = "freezeModal";
+    private const string unfreezeModal = "unfreezeModal";
+    private System.Timers.Timer _debounceTimer;
+    private bool _showConfirmPassword = false;
+    private bool _showPassword = false;
+    private string tableLabel { get; set; } = "Loading...";
+
+    private EmailTemplateViewModel templateModel = new();
+    private List<EmailTemplateViewModel> lstModel = new();
+    private List<SelectListItem> lstEmailType { get; set; } = new();
+    private List<SelectListItem> lstPlaceholder { get; set; } = new();
+
+    public class PagerResponse<T>
+    {
+        public int totalRecords { get; set; }
+        public int pageNumber { get; set; }
+        public int pageSize { get; set; }
+        public List<T> data { get; set; }
+    }
+
+    private void setAuth(bool val)
+    {
+        if (val)
+        {
+            isAuthenticated = val;
+            StateHasChanged();
+        }
+        else
+        {
+            navigator.NavigateTo("/");
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            string token = await _localStorage.GetItemAsync<string>("authToken");
+            if (!string.IsNullOrEmpty(token))
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                await LoadEmailTypes();
+                await LoadPlaceholder();
+                await GetAll();
+            }
+            else
+            {
+                navigator.NavigateTo("/");
+            }
+        }
+    }
+
+    private async Task LoadEmailTypes()
+    {
+        var apiUrl = $"{_configuration["API_App_URL"]}/api/EmailTemplates/GetEmailTypes";
+        var response = await httpClient.GetAsync(apiUrl);
+
+        if (response == null)
+        {
+            Console.WriteLine("? API Response is null. Possible network error or invalid URL.");
+            return;
+        }
+
+        if (response.IsSuccessStatusCode)
+        {
+            var jsonString = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<Response<List<SelectListItem>>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            lstEmailType = apiResponse?.Data ?? new List<SelectListItem>();
+        }
+        else
+        {
+            string errorDetails = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"❌ API Response: {response.StatusCode}");
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                Console.WriteLine("❌ 404 Not Found: The requested resource was not found.");
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                Console.WriteLine("❌ 401 Unauthorized: Token is invalid or expired.");
+                await _localStorage.RemoveItemAsync("authToken");
+                navigator.NavigateTo("/");
+            }
+        }
+    }
+
+    private async Task LoadPlaceholder()
+    {
+        var apiUrl = $"{_configuration["API_App_URL"]}/api/EmailTemplates/GetEmailPlaceholder";
+        var response = await httpClient.GetAsync(apiUrl);
+
+        if (response == null)
+        {
+            Console.WriteLine("? API Response is null. Possible network error or invalid URL.");
+            return;
+        }
+
+        if (response.IsSuccessStatusCode)
+        {
+            var jsonString = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<Response<List<SelectListItem>>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            lstPlaceholder = apiResponse?.Data ?? new List<SelectListItem>();
+        }
+    }
+
+    private async Task GetAll()
+    {
+        tableLabel = "Loading...";
+        try
+        {
+            loader = true;
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/EmailTemplates/GetTemplatesAll?pageNumber={pageNumber}&pageSize={pageSize}&sortColumn={sortColumn}&sortOrder={sortOrder}&search={search}&wholesalerID={WholesalerID}";
+            var response = await httpClient.GetAsync(apiUrl);
+
+            loader = false;
+            if (response == null)
+            {
+                Console.WriteLine("? API Response is null. Possible network error or invalid URL.");
+                return;
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<PagerResponse<EmailTemplateViewModel>>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                lstModel = result?.data ?? new List<EmailTemplateViewModel>();
+                totalPages = result?.totalRecords > 0 ? (int)Math.Ceiling((double)result.totalRecords / pageSize) : 0;
+            }
+            else
+            {
+                string errorDetails = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"? API Response: {response.StatusCode}");
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    Console.WriteLine("? 404 Not Found: The requested resource was not found.");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    Console.WriteLine("? 401 Unauthorized: Token is invalid or expired.");
+                    await _localStorage.RemoveItemAsync("authToken");
+                    navigator.NavigateTo("/");
+                }
+                else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    Console.WriteLine("? 401 Unauthorized: Token is invalid or expired.");
+                    await _localStorage.RemoveItemAsync("authToken");
+                    navigator.NavigateTo("/");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"? Exception in GetProductData: {ex.Message}");
+        }
+        finally
+        {
+            if (lstModel.Count == 0)
+            {
+                tableLabel = "No record found.";
+            }
+            StateHasChanged();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (pageNumber < totalPages)
+        {
+            pageNumber++;
+            await GetAll();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (pageNumber > 1)
+        {
+            pageNumber--;
+            await GetAll();
+        }
+    }
+
+    private async Task ChangePage(int page)
+    {
+        pageNumber = page;
+        await GetAll();
+    }
+
+    private async Task SortTable(string columnName)
+    {
+        if (sortColumn == columnName)
+        {
+            isAscending = !isAscending;
+        }
+        else
+        {
+            sortColumn = columnName;
+            isAscending = true;
+        }
+
+        if (isAscending)
+        {
+            sortOrder = "asc";
+        }
+        else
+        {
+            sortOrder = "desc";
+        }
+        await GetAll();
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        string currentSearch = e.Value?.ToString();
+
+        _debounceTimer?.Stop();
+        _debounceTimer = new System.Timers.Timer(800);
+        _debounceTimer.Elapsed += async (sender, args) =>
+        {
+            _debounceTimer?.Stop();
+            await InvokeAsync(() =>
+            {
+                search = currentSearch;
+                GetAll().GetAwaiter();
+                StateHasChanged();
+            });
+        };
+        _debounceTimer.Start();
+    }
+
+    private async Task OpenAddModal()
+    {
+        templateModel = new EmailTemplateViewModel();
+        StateHasChanged();
+        await JSRuntime.InvokeVoidAsync("showModal", "addEditModal");
+    }
+
+    private async Task OpenEditModal(EmailTemplateViewModel model)
+    {
+        templateModel = new EmailTemplateViewModel();
+        templateModel = model;
+        StateHasChanged();
+        await JSRuntime.InvokeVoidAsync("showModal", "addEditModal");
+    }
+
+    private async Task OpenDeleteConfirmationModal(Guid Id, string Name)
+    {
+        templateModel = new EmailTemplateViewModel()
+        {
+            Id = Id,
+            Name = Name
+        };
+
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("ShowConfirmSwal", "Delete Template", "Are you sure you want to delete Forgot Passwords?", "warning");
+        if (confirmed)
+        {
+            DeleteTemplate();
+        }
+
+       // StateHasChanged();
+        //await JSRuntime.InvokeVoidAsync("showModal", "deleteConfirmationModal");
+    }
+
+    private async Task DeleteTemplate()
+    {
+        if (templateModel.Id == Guid.Empty) return;
+
+        try
+        {
+
+            var response = await httpClient.DeleteAsync($"{_configuration["API_App_URL"]}/api/EmailTemplates/DeleteTemplate/{templateModel.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<APIResponse>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result.Success)
+                {
+                    //await JSRuntime.InvokeVoidAsync("hideModal", "deleteConfirmationModal");
+                    toastService.ShowSuccess(result.Message);
+                    // selectedUser = new();
+                    await GetAll();
+                }
+                else
+                {
+                    toastService.ShowError(result.Message);
+                }
+            }
+            else
+            {
+                toastService.ShowError($"Failed to delete: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError($"Error deleting template: {ex.Message}");
+        }
+    }
+
+    private async Task SaveTemplate()
+    {
+        try
+        {
+            var isEdit = true;
+            if (templateModel.Id == default)
+            {
+                isEdit = false;
+                templateModel.IsDefault = true;
+                templateModel.Id = Guid.NewGuid();
+            }
+            templateModel.WholesalerID = Convert.ToInt32(WholesalerID);
+
+            var json = JsonSerializer.Serialize(templateModel);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var response = new HttpResponseMessage();
+            if (isEdit)
+            {
+                response = await httpClient.PutAsync($"{_configuration["API_App_URL"]}/api/EmailTemplates/UpdateTemplate", content);
+            }
+            else
+            {
+                response = await httpClient.PostAsync($"{_configuration["API_App_URL"]}/api/EmailTemplates/CreateTemplate", content);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<APIResponse>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result.Success)
+                {
+                    await JSRuntime.InvokeVoidAsync("hideModal", "addEditModal");
+                    toastService.ShowSuccess(result.Message);
+                    //selectedUser = new();
+                    await GetAll();
+                }
+                else
+                {
+                    toastService.ShowError(result.Message);
+                }
+            }
+            else
+            {
+                string errorDetails = await response.Content.ReadAsStringAsync(); // Read response body
+                toastService.ShowError($"Failed to Save: {response.StatusCode}");
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError($"Error saving report: {ex.Message}");
+        }
+    }
+
+    private async Task OpenSetDefaultConfirmationModal(Guid Id, string Name)
+    {
+        templateModel = new EmailTemplateViewModel()
+        {
+            Id = Id,
+            Name = Name
+        };
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("ShowConfirmSwal", "Set as Default Template", "Are you sure you want to set Forgot Passwords as the default? This action will unset the default status for other template(s) of this type.?", "warning");
+        if (confirmed)
+        {
+
+            SetAsDefaultTemplate();
+
+
+        }
+       // StateHasChanged();
+       // await JSRuntime.InvokeVoidAsync("showModal", "setDefaultConfirmationModal");
+    }
+
+    private async Task SetAsDefaultTemplate()
+    {
+        if (templateModel.Id == Guid.Empty) return;
+
+        try
+        {
+            var response = await httpClient.GetAsync($"{_configuration["API_App_URL"]}/api/EmailTemplates/SetAsDefaultTemplate/{templateModel.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<APIResponse>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result.Success)
+                {
+                   // await JSRuntime.InvokeVoidAsync("hideModal", "setDefaultConfirmationModal");
+                    toastService.ShowSuccess(result.Message);
+                    //selectedUser = new();
+                    await GetAll();
+                }
+                else
+                {
+                    toastService.ShowError(result.Message);
+                }
+            }
+            else
+            {
+                toastService.ShowError($"Failed to set as default: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError($"Error setting as default template: {ex.Message}");
+        }
+    }
+
+    private async Task InsertPlaceholder(string tag)
+    {
+        await JSRuntime.InvokeVoidAsync("insertTextAtCursor", tag);
+    }
+}

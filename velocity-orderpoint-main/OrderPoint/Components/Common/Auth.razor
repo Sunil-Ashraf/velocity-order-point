@@ -1,0 +1,40 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using OrderPoint.Services
+@inject NavigationManager navigator
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+
+@code {
+    [Parameter]
+    public Action<bool> setAuth { get; set; }
+
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     if (AuthenticationStateProvider is JwtAuthenticationStateProvider jwtAuthStateProvider)
+    //     {
+    //         await jwtAuthStateProvider.InitializeAsync();
+    //     }
+    // }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (AuthenticationStateProvider is JwtAuthenticationStateProvider jwtAuthStateProvider)
+            {
+                await jwtAuthStateProvider.InitializeAsync();
+                await CheckAuthenticationAsync();
+            }
+
+        }
+    }
+    private async Task CheckAuthenticationAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        setAuth.Invoke(user.Identity.IsAuthenticated);
+        if (!user.Identity.IsAuthenticated)
+        {
+            // Redirect to login page if not authenticated
+        }
+    }
+}

@@ -1,0 +1,241 @@
+﻿@using Blazored.Toast.Services
+@using OrderPoint.Admin.Components.Common
+
+@using OrderPoint.Domain.Common
+@using OrderPoint.Domain.ViewModel
+@using Blazored.LocalStorage
+@using System.Net.Http.Headers
+@using System.Text.Json
+@using System.Text
+@inject HttpClient httpClient
+@inject NavigationManager navigator
+@inject IToastService toastService
+@rendermode InteractiveServer
+@inject Blazored.LocalStorage.ILocalStorageService _localStorage
+@inject IConfiguration _configuration
+@inject IJSRuntime JSRuntime
+<Loader visible=loader />
+<div class="modal fade" id="addUser_modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="viewCargoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <EditForm Model="adminmodel" OnValidSubmit="CreateAdmin">
+            <DataAnnotationsValidator />
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-2xl font-semibold text-[#1A1A1A]" id="viewCargoModalLabel">Add User</h5>
+                    <button type="button" class="text-gray-500 hover:text-gray-700" data-bs-dismiss="modal"><img src="./images/close.png"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="mb-4">
+                                <label class="block text-md font-medium text-[#1A1A1A] mb-1 ">User Type</label>
+                                @if (String.IsNullOrEmpty(Name))
+                                {
+                                    <input type="text" disabled class="w-full px-6 py-2 rounded-full border border-[#4E4D4D] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1 valid" name="name" value="New admin user" />
+                                }
+                                else
+                                {
+                                    <input type="text" disabled class="w-full px-6 py-2 rounded-full border border-[#4E4D4D] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1 valid" name="name" value="New user for @Name" />
+                                }
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <label class="block text-md font-medium text-[#1A1A1A] mb-1 ">First Name</label>
+                                <input type="text" class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1" name="name" @bind-value="@adminmodel.FirstName" />
+
+                                <ValidationMessage For="@(()=>adminmodel.FirstName)" />
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <label class="block text-md font-medium text-[#1A1A1A] mb-1 ">Last Name</label>
+                                <input type="text" class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1" name="name" @bind-value="@adminmodel.LastName" />
+                                <ValidationMessage For="@(()=>adminmodel.LastName)" />
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <label class="block text-md font-medium text-[#1A1A1A] mb-1 ">Email</label>
+                                <input type="text" class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1" name="name" @bind-value="@adminmodel.EmailAddress" />
+                                <ValidationMessage For="@(()=>adminmodel.EmailAddress)" />
+                            </div>
+                        </div>
+
+
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <label class="block text-md font-medium text-[#1A1A1A] mb-1 ">Confirm Email</label>
+                                <input type="text" class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1" name="name" @bind-value="@adminmodel.ConfirmEmailAddress" />
+                                <ValidationMessage For="@(()=>adminmodel.ConfirmEmailAddress)" />
+                            </div>
+                        </div>
+
+
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <label class="block text-md font-medium text-[#1A1A1A] mb-1 ">New User Password</label>
+                                <input type="text" class="w-full px-6 py-2 rounded-full border border-[#D2D2D2] focus:ring-[#D2D2D2] focus:outline-none focus:ring-1" name="name" @bind-value="@adminmodel.Password" />
+                                <a href="javascript:;" class="fs-7 ps-2 text-[#1A1A1A] hover:text-[#1A1A1A]" @onclick="()=>GenerateRandomString(14)"><small>Generate Password</small></a>
+                                <ValidationMessage For="@(()=>adminmodel.Password)" />
+                            </div>
+                        </div>
+
+
+                        <div class="col-lg-6 align-self-center">
+                            <div class="mb-2 d-inline-block">
+                                <label class="flex items-center gap-2">
+                                    <InputCheckbox @bind-Value="adminmodel.NotifyNewUser" class="transform scale-125 text-[#1A1A1A] accent-[#1A1A1A]" />
+
+                                     Notify new user?
+                                </label>
+                            </div>
+                        </div>
+
+                        @if (WholesalerID > 0)
+                        {
+                            <div class="col-lg-12 align-self-center">
+                                <div class="mb-2 d-inline-block">
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" @bind-value="@adminmodel.IsBCCOrderConfirmation" class="transform scale-125 text-[#1A1A1A] accent-[#1A1A1A]">
+                                        BCC this wholesaler user when new orders are placed
+                                    </label>
+                                </div>
+                            </div>
+                        }
+
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" data-bs-dismiss="modal" class="rounded-full border border-[#4E4D4D] text-dark px-4 py-2 flex-grow md:flex-none text-[16px] text-center">Cancel</button>
+                    <button class="bg-[#4E4D4D] rounded-full border-black text-white border px-4 py-2  hover:bg-[#4E4D4D] flex-grow md:flex-none text-[16px] text-center">Save</button>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+</div>
+@code {
+    [Parameter]
+    public String Name { get; set; }
+    [Parameter]
+    public String UserType { get; set; }
+    [Parameter]
+    public String CreateFor { get; set; }
+    [Parameter]
+    public long CustomerID { get; set; }
+    [Parameter]
+    public long WholesalerID { get; set; }
+
+    [Parameter]
+    public EventCallback OnUserUpdate { get; set; }
+    SignupViewModel adminmodel = new SignupViewModel();
+    [Parameter]
+    public bool loader { get; set; } = false;
+    private static Random random = new Random();
+    public async Task CreateAdmin()
+    {
+        try
+        {
+            loader = true;
+            adminmodel.UserType = UserType;
+            adminmodel.CreateFor = CreateFor;
+            adminmodel.CustomerID = Convert.ToInt32(CustomerID);
+            adminmodel.WholesalerID = Convert.ToInt32(WholesalerID);
+            var apiUrl = $"{_configuration["API_App_URL"]}/api/Account/Signup";
+            var resJson = JsonSerializer.Serialize(adminmodel);
+            var content = new StringContent(resJson, System.Text.Encoding.UTF8, "application/json");
+            var response = new HttpResponseMessage();// await httpClient.PostAsync($"{_configuration["API_App_URL"]}/api/Products/CreateProduct", content);
+            response = await httpClient.PostAsync(apiUrl, content);
+            loader = false;
+            if (response == null)
+            {
+                Console.WriteLine("❌ API Response is null. Possible network error or invalid URL.");
+                toastService.ShowError("API Response is null. Possible network error or invalid URL. ");
+                return;
+            }
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<APIResponse>(jsonString, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (result.Success)
+                {
+
+                    toastService.ShowSuccess("User has been added successfully.");
+                    await JSRuntime.InvokeVoidAsync("hideModal", "addUser_modal");
+                    adminmodel = new SignupViewModel();
+                }
+                else
+                {
+                    if (result.Message == "Email already exists.")
+                    {
+                        toastService.ShowError(result.Message);
+                        
+                    }
+                    else{
+                        toastService.ShowError(result.Message);
+                        await JSRuntime.InvokeVoidAsync("hideModal", "addUser_modal");
+                        adminmodel = new SignupViewModel();
+                    }
+                }
+                //  if (IsCreateForCustomer == false)
+                if (OnUserUpdate.HasDelegate)
+                {
+                    await OnUserUpdate.InvokeAsync();
+                }
+                
+              
+
+
+
+            }
+
+        }
+        catch (Exception ex)
+        {
+            toastService.ShowError(ex.Message);
+
+        }
+        finally
+        {
+            // if (lstProducts.Count == 0)
+            // {
+            //     tableLabel = "No record found.";
+            // }
+            StateHasChanged();
+        }
+
+    }
+    public void GenerateRandomString(int length)
+    {
+
+        if (length < 4)
+            throw new ArgumentException("Length must be at least 4 to include all required character types.");
+
+        const string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const string lower = "abcdefghijklmnopqrstuvwxyz";
+        const string digits = "0123456789";
+        const string special = "!@#$%^&*()-_=+[]{};:,.<>?";
+
+        // Required characters
+        char[] result = new char[length];
+        result[0] = upper[random.Next(upper.Length)];
+        result[1] = lower[random.Next(lower.Length)];
+        result[2] = digits[random.Next(digits.Length)];
+        result[3] = special[random.Next(special.Length)];
+
+        // Pool for remaining characters
+        string allChars = upper + lower + digits + special;
+
+        for (int i = 4; i < length; i++)
+        {
+            result[i] = allChars[random.Next(allChars.Length)];
+        }
+
+        // Shuffle the array to randomize order
+        adminmodel.Password = new string(result.OrderBy(_ => random.Next()).ToArray());
+
+        // adminmodel.Password = result.ToString();
+    }
+}

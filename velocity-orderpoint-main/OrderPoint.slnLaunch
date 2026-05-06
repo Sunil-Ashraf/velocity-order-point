@@ -1,0 +1,19 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "OrderPoint.API\\OrderPoint.API.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "OrderPoint\\OrderPoint.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "OrderPoint.Admin\\OrderPoint.Admin.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
